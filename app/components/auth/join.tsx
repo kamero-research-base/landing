@@ -318,13 +318,13 @@ const JoinForm = () => {
             </div>
        
             <div className="relative flex flex-col justify-center space-y-1 text-center">
-              <Link href={"https://krbdash.vercel.app/auth/login"} className="text-sm text-teal-600"><span className="text-slate-500">Already joined?</span> Sign in</Link>
+              <Link href={"https://app.kamero.rw/auth/login"} className="text-sm text-teal-600"><span className="text-slate-500">Already joined?</span> Sign in</Link>
             </div>
         </form>
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 border-t border-teal-300 mt-3 py-2">
-          © 2023 - 2024 Kamero Research Base
+          © 2023 - 2025 Kamero Research Base
         </p>
       </div>
     </div>

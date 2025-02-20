@@ -1,8 +1,7 @@
-
 import { NextResponse } from "next/server";
 import client from "../utils/db"; // Adjust the path as needed
 
-export async function  GET() {
+export async function  GET(req: Request) {
  
   try {
 
