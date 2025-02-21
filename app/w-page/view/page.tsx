@@ -95,6 +95,29 @@ export default function Page() {
     }
   }, [research]);
 
+  useEffect(() => {
+   // Fetch research data only if the id is set
+   if (id) {
+    const updateRatings = async () => {
+      try {
+        const response = await fetch(`/api/researches/ratings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ id: id }), // Use resolved ID
+        });
+        if (!response.ok) console.error("Failed to fetch researches");
+      } catch (error) {
+        console.log(error)
+      }
+    };
+
+    updateRatings();
+  }
+  }, [id]);
+
   const buttons = [
     { name: "details" },
     { name: "institution" },

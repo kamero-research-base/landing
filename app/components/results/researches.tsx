@@ -21,7 +21,7 @@ interface Research {
 const headers = [
   {"name":"all"},
   {"name":"new"},
-  {"name":"trends 🔥"},
+  {"name":"trends"},
   {"name":"recommends"},
 ];
 /*
@@ -300,7 +300,7 @@ const Researches = () => {
               "Content-Type": "application/json", // Ensure JSON format
               Accept: "application/json",
             },
-            body: JSON.stringify({search: query}),
+            body: JSON.stringify({search: query, sort: header}),
           }
         );
         if (!response.ok) throw new Error("Failed to fetch researches");
@@ -315,7 +315,7 @@ const Researches = () => {
       }
     };
     fetchResearches();
-  }, [query]);
+  }, [query, header]);
 
  const handleAbstract = (research: string, id: number) => {
     if (typeof window !== "undefined") { // ✅ Ensure it runs only on the client
@@ -347,7 +347,7 @@ const Researches = () => {
       <h4 className="text-slate-400 font-semibold py-2">Results for {"\""+query+"\""}</h4>
       <div className="header">
         {headers.map((header, i) => (
-          <button key={i} onClick={() => {setActiveBtn(i)}} className={`${activeBtn === i ? 'bg-white border border-slate-100 border-b-0' : '' } py-1 px-6 capitalize`}>{header.name}</button>
+          <button key={i} onClick={() => {setActiveBtn(i); setHeader(header.name)}} className={`${activeBtn === i ? 'bg-slate-200 border rounded-md border-slate-100 border-b-0' : '' } py-2 px-6 capitalize`}>{header.name === "trends" ? header.name + " 🔥": header.name}</button>
         ))}
       </div>
       <div className="flex flex-col py-2 space-y-2 w-full">

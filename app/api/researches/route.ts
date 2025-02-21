@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   try {
 
-   const { search } = requestBody;
+   const { search, sort } = requestBody;
 
     let query = `
       SELECT 
@@ -33,8 +33,10 @@ export async function POST(req: Request) {
         r.ratings,
         r.hashed_id,
         r.created_at,
+        i.id AS institution_id,
         i.name AS institute,
-        s.name AS school
+        s.name AS school,
+        s.id AS school_id
     `;
 
     const params: any[] = [];
@@ -79,6 +81,23 @@ export async function POST(req: Request) {
 
       // Add search parameters
       params.push(...searchWords.map((word: string) => `%${word}%`));
+    } else if(sort){
+      query += `
+      FROM researches r
+      JOIN institutions i ON CAST(i.id AS TEXT) = r.institution
+      JOIN schools s ON CAST(s.id AS TEXT) = r.school
+      WHERE r.status ='Published'
+    `;
+      if (sort === "new") {
+        query += " ORDER BY CAST(r.created_at AS DATE) ASC";
+      } else if (sort === "trends") {
+        query += " ORDER BY CAST(r.created_at AS ratings) DESC";
+      } else if (sort === "all") {
+        query += " ORDER BY r.ratings ASC";
+      } else if (sort === "recommends") {
+        query += " AND r.progress_status = 'completed' AND r.ratings > 2.5 ORDER BY r.ratings DESC";
+      } 
+
     } else {
       // If no search query, return all results ordered by ID
       query += `
