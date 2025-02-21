@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import Preloader from "../app/buttonPreloader";
 
 
 interface FormData {
@@ -25,6 +26,7 @@ const VerifyForm = ({hashed, email}: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [timer, setTimer] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
   let timeLeft = 120; // 2 minutes in seconds
@@ -89,6 +91,7 @@ const VerifyForm = ({hashed, email}: Props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     const payload = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
@@ -109,23 +112,22 @@ const VerifyForm = ({hashed, email}: Props) => {
           hashed_id: ""
         });
         const data = response.json();
-         // Update localStorage with the new session
-        localStorage.setItem('userSession', JSON.stringify({
-          session_id: hashed,
-        }));
+         setLoading(false)
       } else {
         const error = await response.text();
         setError(error);
+        setLoading(false)
       }
     } catch (error) {
       setError(`Verification failed! ${(error as Error).message}`);
+      setLoading(false)
     }
   };
 
 
     if(success?.includes('verified')){
      setTimeout(() => {
-      router.push('https://krbdash.vercel.app/auth/login');
+      router.push('https://app.kamero.rw/auth/login');
      }, 2000)
     }
   return (
@@ -185,11 +187,15 @@ const VerifyForm = ({hashed, email}: Props) => {
             </div>
 
              {/* Submit Button */}
-            <div className="text-center">
+             <div className="text-center flex justify-center">
              <button
               type="submit"
-              className="w-[150px] border border-teal-400 text-teal-600 py-2 rounded-md hover:bg-teal-100 transition-all duration-300"
+              disabled={loading}
+              className="w-[150px] flex items-center justify-center space-x-2 border border-teal-400 text-teal-500 py-2 rounded-md hover:bg-teal-100 transition-all duration-300"
              >
+              {loading && (
+                <Preloader />
+              )}
               Verify
              </button>
             </div>
@@ -199,7 +205,7 @@ const VerifyForm = ({hashed, email}: Props) => {
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 border-t border-teal-300 mt-6 py-2">
 
-          © 2023 - 2024 Kamero Research Base
+          © 2023 - 2025 Kamero Research Base
         </p>
       </div>
     </div>

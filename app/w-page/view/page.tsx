@@ -1,5 +1,6 @@
 "use client";
 
+import Preloader from "@/app/components/app/divPreloader";
 import TopBar from "@/app/components/results/top";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -45,7 +46,7 @@ export default function Page() {
   const [success, setSuccess] = useState<string | null>(null);
   const [research, setResearch] = useState<FormData | null>(null);
   const [id, setId] = useState<string>("");
-
+  const [loading, setLoading] = useState(true);
   const handleActive = (id: number) => {
     setActiveId(id);
   };
@@ -65,6 +66,7 @@ export default function Page() {
     // Fetch research data only if the id is set
     if (id) {
       const fetchResearch = async () => {
+        setLoading(true)
         try {
           const response = await fetch(`/api/researches/view`, {
             method: "POST",
@@ -77,8 +79,10 @@ export default function Page() {
           if (!response.ok) throw new Error("Failed to fetch researches");
           const data = await response.json();
           setResearch(data);
+          setLoading(false)
         } catch (error) {
           setError("An error occurred while fetching research data: " + error);
+          setLoading(false);
         }
       };
 
@@ -125,6 +129,7 @@ export default function Page() {
 
   const showSideBar = () => setIsOpen(!isOpen);
   const closeSideBar = () => setIsOpen(false);
+  
 
   return (
     <>
@@ -152,16 +157,9 @@ export default function Page() {
           ))}
 
         </div>
-        
+        {loading ? <Preloader /> : (
         <form className="space-y-2">
-        {/*(success || error) && (
-          <div
-          className={`${success?.includes('success') ? 'bg-green-100 text-green-500 border-green-300 ' : ' bg-red-100 text-red-500 border-red-300 '} font-semibold p-4 rounded-md`}
-          >
-            {success ? success : error ? error : ""}
-          </div>
-        )*/}
-        <div className="flex justify-between p-2 space-x-3">
+         <div className="flex justify-between p-2 space-x-3">
           <div className="w-5/6 bg-white rounded-lg p-5">
            <div className="w-full flex items-center justify-center bg-slate-100 p-2">
             <i className="bi bi-search text-5xl text-slate-400"></i>
@@ -243,6 +241,7 @@ export default function Page() {
           </div>
         </div>
         </form>
+        )}
        </div>
       </div>
     </>

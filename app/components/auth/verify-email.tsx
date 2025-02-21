@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import ChangePassword from "./change-password";
+import Preloader from "../app/buttonPreloader";
 
 
 interface FormData {
@@ -22,6 +23,7 @@ const VerifyEmail = ({hashed, email}: Props) => {
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleFocus = (field: string) =>
     setFocus((prev) => ({ ...prev, [field]: true }));
@@ -38,6 +40,7 @@ const VerifyEmail = ({hashed, email}: Props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     const payload = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
@@ -53,16 +56,15 @@ const VerifyEmail = ({hashed, email}: Props) => {
 
       if (response.ok) {
         setSuccess("Email verified! ✅");
-         // Update localStorage with the new session
-        localStorage.setItem('userSession', JSON.stringify({
-          session_id: hashed,
-        }));
+        setLoading(false);
       } else {
         const error = await response.text();
         setError(error);
+        setLoading(false);
       }
     } catch (error) {
       setError(`Verification failed! ${(error as Error).message}`);
+      setLoading(false);
     }
   };
 
@@ -124,11 +126,15 @@ const VerifyEmail = ({hashed, email}: Props) => {
             ))}
           
              {/* Submit Button */}
-            <div className="text-center">
+             <div className="text-center flex justify-center">
              <button
               type="submit"
-              className="w-[150px] border border-teal-400 text-teal-600 py-2 rounded-md hover:bg-teal-100 transition-all duration-300"
+              disabled={loading}
+              className="w-[150px] flex items-center justify-center space-x-2 border border-teal-400 text-teal-500 py-2 rounded-md hover:bg-teal-100 transition-all duration-300"
              >
+              {loading && (
+                <Preloader />
+              )}
               Verify
              </button>
             </div>
