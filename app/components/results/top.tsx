@@ -21,9 +21,9 @@ const TopBar = ({onClickSideBar}: TopbarProps) => {
     <div className="fixed bg-white w-full top-0 left-0 m-0 z-10">
       <div className="flex justify-center items-center">
         <div className="sidemenu flex items-center flex-1 text-slate-500">
-          <div className="w-16 h-16 rounded-full">
+          <Link href={"/"} className="w-16 h-16 rounded-full">
             <img src="/logo.svg" alt="logo" className="w-full h-full rounded-full"/>
-          </div>
+          </Link>
           <div className="mx-1 cursor-pointer" onClick={onClickSideBar}>
             <i className="bi bi-list text-2xl text-teal-800"></i>
           </div>

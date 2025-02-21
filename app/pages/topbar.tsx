@@ -9,9 +9,9 @@ const TopBar = ({onClickSideBar}: TopbarProps) => {
     <div className="m-0 py-3 px-5">
       <div className="flex justify-center items-center">
         <div className="sidemenu flex items-center flex-1 text-slate-500">
-          <div className="w-12 h-12 rounded-full">
+          <Link href={"/"} className="w-12 h-12 rounded-full">
             <img src="/logo.svg" alt="logo" className="w-full h-full rounded-full"/>
-          </div>
+          </Link>
           <div className="mx-1 cursor-pointer" onClick={onClickSideBar}>
             <i className="bi bi-list text-2xl text-teal-800"></i>
           </div>

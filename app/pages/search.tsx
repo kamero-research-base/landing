@@ -12,7 +12,7 @@ const Search = () =>{
           <input type="search" name="search" id="" placeholder="Search for researches ..." className="w-[80%] text-gray-100 placeholder:text-gray-300 placeholder:font-medium border outline-none rounded-s-md border-r-0 px-4 py-2 bg-transparent border-slate-50"/>
           <button type="submit" className="text-center px-4 text-slate-200 border border-l-0 rounded-e-md border-slate-50 bg-teal-600"><i className="bi bi-search"></i></button>
         </form>
-        <h4 className="text-center py-3 font-medium text-emerald-200">Scholars first support</h4>
+        <h4 className="text-center py-3 font-medium text-emerald-200">Scholars first spot</h4>
         </div>
         
       </div>
