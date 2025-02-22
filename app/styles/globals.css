@@ -5,6 +5,7 @@
 body {
   font-family: 'Poppins';
 }
+
 /* Hide the scrollbar */
 .div {
   overflow-y: auto;

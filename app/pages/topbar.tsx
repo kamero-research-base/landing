@@ -25,6 +25,8 @@ const TopBar = ({onClickSideBar}: TopbarProps) => {
             <i className="bi bi-globe"> </i>
             <select name="" id="">
               <option value="">English</option>
+              <option value="">Fr</option>
+              <option value="">Kiny</option>
             </select>
           </div>
           {false ? (

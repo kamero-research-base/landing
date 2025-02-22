@@ -22,7 +22,9 @@ const filteredTitles = researchTitles.filter((Title) =>
   Title.toLowerCase().includes("health") // Change this condition based on your need
 );
 const sortedTitles = researchTitles.sort((a, b) => a.localeCompare(b));
-
+interface SimilarTitlesProps{
+  title: string
+}
 const SimilarTitles = () => {
   return (
     <div className="div bg-white py-2 px-3 space-y-1 flex flex-col max-h-[65vh] overflow-hidden overflow-y-visible">

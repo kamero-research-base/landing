@@ -31,6 +31,17 @@ const TopBar = ({onClickSideBar}: TopbarProps) => {
             <i className="bi bi-question-circle-fill text-2xl mr-2"></i> 
             <span> Help </span>
           </Link>
+
+        </div>
+        <div className="contact-us flex items-center space-x-5 mx-4 text-slate-600 font-medium">
+          <div className="phone">
+            <i className="bi bi-phone mr-1"></i>
+            +250781921614
+          </div>
+          <div className="email">
+            <i className="bi bi-envelope mr-1"></i>
+            info<i className="bi bi-at"></i>kamero.rw
+          </div>
         </div>
         <div className="login px-5">
           {false ? (
@@ -43,8 +54,6 @@ const TopBar = ({onClickSideBar}: TopbarProps) => {
             <Link href={"/w-page/auth/join"} className="border border-teal-300 py-1 px-6 rounded-md bg-teal-600 text-white">Join for free</Link>
           </div>
           )}
-          
-          
         </div>
       </div>
       <div className="w-full px-4 py-2 bg-teal-600 flex justify-between items-center">

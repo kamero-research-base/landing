@@ -3,6 +3,7 @@
 import Preloader from "@/app/components/app/divPreloader";
 import TopBar from "@/app/components/results/top";
 import Link from "next/link";
+import { title } from "process";
 import { useEffect, useState } from "react";
 
 interface FormData {
@@ -79,9 +80,10 @@ export default function Page() {
           if (!response.ok) throw new Error("Failed to fetch researches");
           const data = await response.json();
           setResearch(data);
-          setLoading(false)
+          setLoading(false);
+          if (!response.ok) setError("Not found")
         } catch (error) {
-          setError("An error occurred while fetching research data: " + error);
+          setError("Not found");
           setLoading(false);
         }
       };
@@ -124,19 +126,23 @@ export default function Page() {
 
   const buttons = [
     { name: "details" },
-    { name: "institution" },
   ];
 
   const showSideBar = () => setIsOpen(!isOpen);
   const closeSideBar = () => setIsOpen(false);
-  
-
+  let title = "Loading ...";
+  if(error?.includes("Not found")){
+    title = "Not found";
+  }else{
+    title = ""+research?.title
+  }
   return (
     <>
        <head>
-        <title>{research?.title}</title>
+        <title>{title}</title>
       </head>
       <TopBar onClickSideBar={showSideBar} />
+      {error && error.includes("Not found") ? (<div className="text-red-500 p-32 my-32 text-center">Material not found</div>) : (
       <div className="py-2 bg-slate-50 flex flex-1 mt-[118px]" onClick={closeSideBar}>
       <div className="w-full bg-slate-100 px-4">
         <h4 className="flex justify-between items-center py-4 px-2">
@@ -244,6 +250,7 @@ export default function Page() {
         )}
        </div>
       </div>
+      )}
     </>
   );
 }
