@@ -11,9 +11,19 @@ import Footer from "./pages/footer";
 
 const manipulateUrl = (url: string) => {
   // Remove the '/iooio/' prefix
+    let query = "";
+      // Get search query from URL and set the id
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const kay = urlParams.get("search");
+        if (kay) {
+          query = ""+kay;
+        }
+      }
+
   if(url.startsWith('/w-page/result')){
     url = url.replace('/w-page/result?search=', '');
-    url = 'Search results ';
+    url = 'Search - \"'+query+'\" ';
   }else if(url.startsWith('/w-page/')){
     url = url.replace('/w-page/', '');
   }else{

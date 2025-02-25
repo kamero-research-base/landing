@@ -22,7 +22,7 @@ const HomePage = () => {
       {isOpen && (
         <SideBar />
       )}
-      <main className="h-[60vh] w-full" onClick={closeSideBar}>
+      <main className="sm:h-[60vh] h-[40vh] w-full" onClick={closeSideBar}>
         <Search />
       </main>
     </>

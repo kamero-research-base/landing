@@ -7,7 +7,7 @@ const Preloader: React.FC = () => {
 
        
         <div className="relative inset-0 flex items-center justify-center z-20 ">
-            <div className="w-8 h-8 border-4 border-red-300 border-dashed rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-teal-400 border-dashed rounded-full animate-spin"></div>
         </div> 
         
     </div>

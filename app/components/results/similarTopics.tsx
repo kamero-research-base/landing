@@ -1,44 +1,48 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useState } from "react";
 
 const researchTopics = [
-  "Pest surveillance and management",
-  "Sustainable farming practices",
-  "Crop diversification",
-  "Food systems",
-  "Biofortification",
-  "HIV/AIDS and other sexually transmitted infections",
-  "Reproductive health and family planning",
-  "Infectious diseases (e.g., malaria, Ebola, Marburg virus)",
-  "Occupational safety and health in agriculture",
-  "Advanced surgical techniques",
-  "Higher education development",
-  "Access to education in rural areas",
-  "Educational technology integration",
-  "Curriculum development",
-  "Electronic case management systems",
-  "Digital transformation in public services",
-  "Artificial intelligence applications",
-  "Post-genocide reconciliation and justice",
-  "Social equity in healthcare",
-  "Gender studies",
-  "Community development",
-  "Climate change adaptation",
-  "Biodiversity conservation",
-  "Sustainable urban planning",
-  "Water resource management",
-  "Trade and market dynamics",
-  "Infrastructure development",
-  "Social protection programs",
-  "Energy sector growth",
-  "Policy strengthening in labor sectors",
-  "Public administration reforms",
-  "Legal system effectiveness"
+  "Health Research",
+  "Agriculture and Environmental Research",
+  "Education and Social Sciences",
+  "Energy and Infrastructure",
+  "Information and Communication Technology (ICT)",
+  "Industry and Manufacturing",
+  "Natural and Basic Sciences",
+  "Tourism and Cultural Heritage",
+  "Policy and Governance",
+  "Innovation and Technology Transfer"
 ];
-const filteredTopics = researchTopics.filter((topic) =>
-  topic.toLowerCase().includes("health") // Change this condition based on your need
-);
-const sortedTopics = researchTopics.sort((a, b) => a.localeCompare(b));
+
+const getSortedTopics = (query: string) => {
+  const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+
+  return researchTopics
+    .map(topic => {
+      const lowerTopic = topic.toLowerCase();
+      const matchCount = queryWords.reduce((count, word) => count + (lowerTopic.includes(word) ? 1 : 0), 0);
+      return { topic, matchCount };
+    })
+    .sort((a, b) => b.matchCount - a.matchCount) // Sort by match count (descending)
+    .map(item => item.topic); // Extract sorted topics
+};
+
+
 const SimilarTopics = () => {
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    // Get search query from URL and set the id
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const kay = urlParams.get("search");
+      if (kay) {
+        setQuery(""+kay);
+      }
+    }
+  }, []);
+const sortedTopics = getSortedTopics(query);
   return (
     <div className="div bg-white py-2 px-3 space-y-1 flex flex-col max-h-[65vh] overflow-hidden overflow-y-visible">
       {sortedTopics.map((topic, i) => (

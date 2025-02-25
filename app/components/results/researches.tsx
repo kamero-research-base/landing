@@ -332,80 +332,120 @@ const Researches = () => {
   }, [currentResearches]);
 
   if (loading) {
-    return (<div className="p-5 ml-[20vw] w-full min-h-[60vh]"><Preloader /></div>);
+    return (
+      <div className="p-5 w-full min-h-[60vh] flex justify-center">
+        <Preloader />
+      </div>
+    );
   }
-
+  
   if (error) {
-    return (<div className="p-5 ml-[20vw] w-full min-h-[60vh]"><div className="text-center text-red-500 py-20">{error}</div></div>);
+    return (
+      <div className="p-5 w-full min-h-[60vh] flex justify-center">
+        <div className="text-center text-red-500 py-20">{error}</div>
+      </div>
+    );
   }
-
+  
   if (researches.length === 0) {
-    return (<div className="p-5 ml-[20vw] w-full min-h-[60vh]"><div className="text-center text-gray-500 py-20 text-xl">No results found for {'"'}<b>{query}</b>{'"'}.</div></div>);
+    return (
+      <div className="p-5 w-full min-h-[60vh] flex justify-center">
+        <div className="text-center text-gray-500 py-20 text-xl">
+          No results found for {'"'}
+          <b>{query}</b>
+          {'"'}.
+        </div>
+      </div>
+    );
   }
+  
   return (
-    <div className="p-5 ml-[20vw] w-full min-h-[60vh]">
-      <h4 className="text-slate-400 font-semibold py-2">Results for {"\""+query+"\""}</h4>
-      <div className="header">
+    <div className="py-2 px-5 sm:p-5 w-full min-h-[60vh] lg:ml-[20vw]">
+      <h4 className="text-slate-400 font-semibold pt-2 pb-4 sm:pb-2">
+        Results for {"\"" + query + "\""}
+      </h4>
+  
+      {/* Tab Headers */}
+      <div className="flex flex-wrap gap-2">
         {headers.map((header, i) => (
-          <button key={i} onClick={() => {setActiveBtn(i); setHeader(header.name)}} className={`${activeBtn === i ? 'bg-slate-200 border rounded-md border-slate-100 border-b-0' : '' } py-2 px-6 capitalize`}>{header.name === "trends" ? header.name + " 🔥": header.name}</button>
+          <button
+            key={i}
+            onClick={() => {
+              setActiveBtn(i);
+              setHeader(header.name);
+            }}
+            className={`py-2 px-6 capitalize border rounded-md ${
+              activeBtn === i ? "bg-slate-200 border-slate-100 border-b-0" : ""
+            }`}
+          >
+            {header.name === "trends" ? header.name + " 🔥" : header.name}
+          </button>
         ))}
       </div>
+  
+      {/* Research Items */}
       <div className="flex flex-col py-2 space-y-2 w-full">
-        {currentResearches.map((reseach, i) => (
-
-        <Link key={i} href={`/w-page/view?id=${reseach.hashed_id}`} className="border w-full border-slate-200 rounded-lg py-2 px-5 hover:bg-slate-100 bg-white">
-          <div className="font-medium text-teal-600">{reseach.title}</div>
-          <div className="ratings space-x-3">
-           <Ratings rating={reseach.ratings}/>
-          </div>
-          <div className="text-slate-500 text-sm py-2" id={`abstract${reseach.id}`}>{}</div>
-          <div className="text-slate-600 u">{reseach.researcher} | {reseach.year} | {reseach.m_status} - Since {formatDate(reseach.created_at)}</div>
-        </Link>
+        {currentResearches.map((research, i) => (
+          <Link
+            key={i}
+            href={`/w-page/view?id=${research.hashed_id}`}
+            className="border w-full border-slate-200 rounded-lg py-2 px-5 hover:bg-slate-100 bg-white"
+          >
+            <div className="font-medium text-teal-600">{research.title}</div>
+            <div className="ratings space-x-3">
+              <Ratings rating={research.ratings} />
+            </div>
+            <div className="text-slate-500 text-sm py-2" id={`abstract${research.id}`}></div>
+            <div className="text-slate-600">
+              {research.researcher} | {research.year} | {research.m_status} - Since{" "}
+              {formatDate(research.created_at)}
+            </div>
+          </Link>
         ))}
-            {/* Pagination Controls */}
-<div className="flex justify-center items-center space-x-2 mt-4">
-  <button
-    onClick={() => handlePageChange(currentPage - 1)}
-    disabled={currentPage === 1}
-    className={`px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
-      currentPage === 1
-        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-        : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black"
-    }`}
-  >
-    Previous
-  </button>
-
-  {Array.from({ length: totalPages }, (_, index) => (
-    <button
-      key={index + 1}
-      className={`px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
-        currentPage === index + 1
-          ? "bg-teal-400 text-white border-teal-500"
-          : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black"
-      }`}
-      onClick={() => handlePageChange(index + 1)}
-    >
-      {index + 1}
-    </button>
-  ))}
-
-  <button
-    onClick={() => handlePageChange(currentPage + 1)}
-    disabled={currentPage === totalPages}
-    className={`px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
-      currentPage === totalPages
-        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-        : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black"
-    }`}
-  >
-    Next
-  </button>
-</div>
-
-       
+  
+        {/* Pagination Controls */}
+        <div className="flex flex-wrap justify-center items-center space-x-2 mt-4">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
+              currentPage === 1
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black"
+            }`}
+          >
+            Previous
+          </button>
+  
+          {Array.from({ length: totalPages }, (_, index) => (
+            <button
+              key={index + 1}
+              className={`px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
+                currentPage === index + 1
+                  ? "bg-teal-400 text-white border-teal-500"
+                  : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black"
+              }`}
+              onClick={() => handlePageChange(index + 1)}
+            >
+              {index + 1}
+            </button>
+          ))}
+  
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
+              currentPage === totalPages
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black"
+            }`}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
+  
 }
 export default Researches;
