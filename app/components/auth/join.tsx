@@ -160,7 +160,12 @@ const JoinForm = () => {
                 { id: "last_name", label: "Other Names", type: "text" },
               ].map((field) => (
                 <div key={field.id} className="relative">
-                  <label htmlFor={field.id} className="absolute left-3 text-gray-500 top-2 transition-all duration-300">
+                  <label htmlFor={field.id} 
+                   className={`absolute left-3 text-gray-500 transition-all duration-300 ${
+                    focus[field.id]
+                      ? "top-[-10px] text-sm bg-white px-1"
+                      : "top-2 text-base"
+                  }`}>
                     {field.label} <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -179,7 +184,12 @@ const JoinForm = () => {
     
             {/* Row 2: Email */}
             <div className="relative">
-              <label htmlFor="email" className="absolute left-3 text-gray-500 top-2 transition-all duration-300">
+              <label htmlFor="email" 
+               className={`absolute left-3 text-gray-500 transition-all duration-300 ${
+                focus["email"]
+                  ? "top-[-10px] text-sm bg-white px-1"
+                  : "top-2 text-base"
+              }`}>
                 Email <span className="text-red-500">*</span>
               </label>
               <input
@@ -201,7 +211,13 @@ const JoinForm = () => {
                 { id: "password", label: "Password", type: "password" },
               ].map((field) => (
                 <div key={field.id} className="relative">
-                  <label htmlFor={field.id} className="absolute left-3 text-gray-500 top-2 transition-all duration-300">
+                  <label htmlFor={field.id} 
+                     className={`absolute left-3 text-gray-500 transition-all duration-300 ${
+                      focus[field.id]
+                        ? "top-[-10px] text-sm bg-white px-1"
+                        : "top-2 text-base"
+                    }`}
+                  >
                     {field.label} <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -220,7 +236,12 @@ const JoinForm = () => {
     
             {/* Department */}
             <div className="relative">
-              <label htmlFor="department" className="absolute left-3 text-gray-500 top-2 transition-all duration-300">
+              <label htmlFor="department" 
+              className={`absolute left-3 text-gray-500 transition-all duration-300 ${
+                      focus["department"]
+                        ? "top-[-10px] text-sm bg-white px-1"
+                        : "top-2 text-base"
+                    }`}>
                 Department <span className="text-red-500">*</span>
               </label>
               <select
