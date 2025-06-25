@@ -23,11 +23,11 @@ const HomePage = () => {
       {isOpen && <SideBar />}
       
       <main 
-        className="min-h-[100dvh] w-full bg-gradient-to-br from-slate-900 via-slate-900 to-teal-900/60" 
+        className="min-h-[80dvh] w-full bg-gradient-to-br from-slate-900 via-slate-900 to-teal-900/60" 
         onClick={closeSideBar}
       >
         {/* Search Section */}
-        <div className="w-full h-screen flex justify-center items-center px-3 sm:px-4 lg:px-6">
+        <div className="w-full h-[80vh] sm:h-screen flex justify-center items-center px-3 sm:px-4 lg:px-6">
           <div className="flex flex-col justify-center items-center p-3 sm:p-4 lg:p-6 rounded-2xl w-full max-w-6xl">
             {/* Main Search Card */}
             <div className={`
