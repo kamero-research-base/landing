@@ -27,7 +27,7 @@ const HomePage = () => {
         onClick={closeSideBar}
       >
         {/* Search Section */}
-        <div className="w-full h-[80vh] sm:h-screen flex justify-center items-center px-3 sm:px-4 lg:px-6">
+        <div className="w-full h-[90vh] sm:h-screen flex justify-center items-center px-3 sm:px-4 lg:px-6">
           <div className="flex flex-col justify-center items-center p-3 sm:p-4 lg:p-6 rounded-2xl w-full max-w-6xl">
             {/* Main Search Card */}
             <div className={`
