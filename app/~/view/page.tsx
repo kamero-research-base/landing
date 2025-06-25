@@ -149,10 +149,10 @@ const ShareButton: React.FC<{ research: Research; researchId: string; variant?: 
       <button
         ref={buttonRef}
         onClick={() => setShowShareMenu(!showShareMenu)}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
       >
         <i className="bi bi-share"></i>
-        Share
+        <span className="hidden sm:inline">Share</span>
       </button>
 
       {showShareMenu && (
@@ -285,14 +285,14 @@ export default function ResearchViewPage() {
       
       <div className="min-h-screen bg-gray-50 mt-[80px]" onClick={closeSideBar}>
         {error ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center bg-white rounded-lg shadow-sm p-12 max-w-md mx-4">
-              <i className="bi bi-exclamation-triangle text-5xl text-red-500 mb-4"></i>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Research Not Found</h2>
-              <p className="text-gray-600 mb-6">The research document you're looking for doesn't exist or has been removed.</p>
+          <div className="flex items-center justify-center min-h-[60vh] px-4">
+            <div className="text-center bg-white rounded-lg shadow-sm p-8 sm:p-12 max-w-md mx-auto">
+              <i className="bi bi-exclamation-triangle text-4xl sm:text-5xl text-red-500 mb-4"></i>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Research Not Found</h2>
+              <p className="text-sm sm:text-base text-gray-600 mb-6">The research document you're looking for doesn't exist or has been removed.</p>
               <Link 
                 href="/" 
-                className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm"
               >
                 <i className="bi bi-arrow-left mr-2"></i>
                 Back to Research Library
@@ -300,38 +300,38 @@ export default function ResearchViewPage() {
             </div>
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center justify-center min-h-[60vh] px-4">
             <div className="text-center">
               <Preloader />
-              <p className="mt-4 text-gray-600">Loading research details...</p>
+              <p className="mt-4 text-gray-600 text-sm sm:text-base">Loading research details...</p>
             </div>
           </div>
         ) : research ? (
-          <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
             {/* Header Section */}
-            <div className="bg-white rounded-lg shadow-sm border mb-8">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
+            <div className="bg-white rounded-lg shadow-sm border mb-6 sm:mb-8">
+              <div className="p-4 sm:p-6 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 leading-tight break-words">
                       {research.title}
                     </h1>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600">
                       <span className="flex items-center">
-                        <i className="bi bi-person mr-1"></i>
-                        {research.researcher}
+                        <i className="bi bi-person mr-1 flex-shrink-0"></i>
+                        <span className="truncate">{research.researcher}</span>
                       </span>
                       <span className="flex items-center">
-                        <i className="bi bi-calendar mr-1"></i>
+                        <i className="bi bi-calendar mr-1 flex-shrink-0"></i>
                         {research.year}
                       </span>
                       <span className="flex items-center">
-                        <i className="bi bi-building mr-1"></i>
-                        {research.institute}
+                        <i className="bi bi-building mr-1 flex-shrink-0"></i>
+                        <span className="truncate">{research.institute}</span>
                       </span>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm capitalize font-medium border ${getStatusStyle(research.progress_status || "")}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm capitalize font-medium border ${getStatusStyle(research.progress_status || "")} flex-shrink-0`}>
                     <i className={`bi ${research.progress_status === "completed" ? "bi-check-circle" : "bi-clock"} mr-1`}></i>
                     {research.progress_status}
                   </span>
@@ -339,28 +339,28 @@ export default function ResearchViewPage() {
               </div>
               
               {/* Action Buttons */}
-              <div className="px-6 py-4 bg-gray-50 flex items-center gap-3">
-                <button disabled className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 flex items-center gap-2 sm:gap-3">
+                <button disabled className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm">
                   <i className="bi bi-bookmark"></i>
-                  Save
+                  <span className="hidden sm:inline">Save</span>
                 </button>
                 <ShareButton research={research} researchId={id} variant="header" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Abstract Section */}
                 <div className="bg-white rounded-lg shadow-sm border">
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <i className="bi bi-file-text mr-2 text-teal-600"></i>
+                      <i className="bi bi-file-text mr-2 text-teal-600 flex-shrink-0"></i>
                       Abstract
                     </h2>
                     <div 
                       id="abstract" 
-                      className="prose prose-gray max-w-none text-gray-700 leading-relaxed"
+                      className="prose prose-gray max-w-none text-gray-700 leading-relaxed text-sm sm:text-base"
                     ></div>
                   </div>
                 </div>
@@ -368,26 +368,26 @@ export default function ResearchViewPage() {
                 {/* Document Access */}
                 {research.document && (
                   <div className="bg-white rounded-lg shadow-sm border">
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                       <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <i className="bi bi-file-earmark-pdf mr-2 text-red-600"></i>
+                        <i className="bi bi-file-earmark-pdf mr-2 text-red-600 flex-shrink-0"></i>
                         Full Document
                       </h2>
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                            <i className="bi bi-file-earmark-pdf text-red-600 text-xl"></i>
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i className="bi bi-file-earmark-pdf text-red-600 text-lg sm:text-xl"></i>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">Research Document</p>
-                            <p className="text-sm text-gray-600">{research.document_type || "PDF"}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 text-sm sm:text-base break-words">Research Document</p>
+                            <p className="text-xs sm:text-sm text-gray-600">{research.document_type || "PDF"}</p>
                           </div>
                         </div>
                         <Link
                           href={research.document}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex-shrink-0"
                         >
                           <i className="bi bi-eye"></i>
                           View Document
@@ -402,9 +402,9 @@ export default function ResearchViewPage() {
               <div className="space-y-6">
                 {/* Research Details */}
                 <div className="bg-white rounded-lg shadow-sm border">
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <i className="bi bi-info-circle mr-2 text-blue-600"></i>
+                      <i className="bi bi-info-circle mr-2 text-blue-600 flex-shrink-0"></i>
                       Research Details
                     </h2>
                     <div className="space-y-4">
@@ -452,7 +452,7 @@ export default function ResearchViewPage() {
                       ].map((item) => (
                         item.value && (
                           <div key={item.label} className="flex items-start gap-3">
-                            <i className={`${item.icon} text-gray-400 mt-0.5`}></i>
+                            <i className={`${item.icon} text-gray-400 mt-0.5 flex-shrink-0`}></i>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                                 {item.label}
@@ -470,16 +470,16 @@ export default function ResearchViewPage() {
 
                 {/* Quick Actions */}
                 <div className="bg-white rounded-lg shadow-sm border">
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                     <div className="space-y-1">
                       <ShareButton research={research} researchId={id} variant="quick-action" />
                       <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                        <i className="bi bi-chat text-blue-500"></i>
+                        <i className="bi bi-chat text-blue-500 flex-shrink-0"></i>
                         <span className="text-sm text-gray-700">Add comment</span>
                       </button>
                       <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                        <i className="bi bi-flag text-red-500"></i>
+                        <i className="bi bi-flag text-red-500 flex-shrink-0"></i>
                         <span className="text-sm text-gray-700">Report issue</span>
                       </button>
                     </div>
