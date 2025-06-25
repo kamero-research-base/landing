@@ -47,7 +47,7 @@ const MenuButton: React.FC<{ onClick: () => void; isOpen: boolean }> = ({ onClic
     <div className="flex flex-col space-y-1.5">
       <span className={`block w-4 sm:w-5 h-0.5 bg-teal-300 group-hover:bg-teal-200 transition-all duration-300 ${isOpen ? 'rotate-45 translate-y-2' : ''}`} />
       <span className={`block w-4 sm:w-5 h-0.5 bg-teal-300 group-hover:bg-teal-200 transition-all duration-300 ${isOpen ? 'opacity-0' : ''}`} />
-      <span className={`block w-3 sm:w-5 h-0.5 bg-teal-300 group-hover:bg-teal-200 transition-all duration-300 ${isOpen ? '-rotate-45 -translate-y-2 w-4 sm:w-5' : ''}`} />
+      <span className={`block w-4 sm:w-5 h-0.5 bg-teal-300 group-hover:bg-teal-200 transition-all duration-300 ${isOpen ? '-rotate-45 -translate-y-2 w-4 sm:w-5' : ''}`} />
     </div>
   </button>
 );
@@ -136,7 +136,7 @@ const MobileMenu: React.FC<{
           <div className="pt-4 border-t border-teal-800/30">
             <Link 
               href={ROUTES.join} 
-              onClick={()=>{setIsAuth(true)}}
+              onClick={()=>{setIsAuth(!isAuth)}}
               className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-medium rounded-lg shadow-lg hover:from-teal-500 hover:to-teal-600 transition-all"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -340,7 +340,7 @@ const TopBar: React.FC<TopbarProps> = ({ onClickSideBar }) => {
               
                   <Link
                     href={ROUTES.join}
-                    onClick={() => setIsAuth(true)}
+                    onClick={() => setIsAuth(!isAuth)}
                     className="hidden md:flex relative px-3 lg:px-6 py-2 lg:py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 text-white font-medium text-xs lg:text-sm overflow-hidden group shadow-lg shadow-teal-900/50 hover:shadow-xl hover:shadow-teal-900/50 transition-all duration-300 items-center"
                   >
                     <span className="relative z-10 flex items-center">
