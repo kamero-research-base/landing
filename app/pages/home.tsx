@@ -28,7 +28,7 @@ const HomePage = () => {
       >
         {/* Search Section */}
         <div className="w-full h-screen flex justify-center items-center px-4 ">
-          <div className="flex flex-col justify-center items-center p-4 rounded-2xl w-full max-w-4xl">
+          <div className="flex flex-col justify-center items-center p-4 rounded-2xl w-full max-w-full">
             {/* Main Search Card */}
             <div className={`
               flex 
@@ -49,7 +49,7 @@ const HomePage = () => {
 
               {/* Search Form */}
               <form action="/~/result" method="GET" className="flex justify-center w-full mb-6">
-                <div className="relative w-full max-w-2xl flex">
+                <div className="relative w-full max-w-4xl sm:max-w-2xl flex">
                   <input 
                     type="search" 
                     name="search" 
