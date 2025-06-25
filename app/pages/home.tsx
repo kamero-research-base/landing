@@ -48,7 +48,7 @@ const HomePage = () => {
               </div>
 
               {/* Search Form */}
-              <div className="flex justify-center w-full mb-4 sm:mb-6">
+              <form action={'/~/result'} className="flex justify-center w-full mb-4 sm:mb-6">
                 <div className="relative w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-2xl xl:max-w-3xl flex">
                   <input 
                     type="search" 
@@ -76,7 +76,7 @@ const HomePage = () => {
                     <i className="bi bi-search text-sm sm:text-base lg:text-lg group-hover:scale-110 transition-transform" />
                   </button>
                 </div>
-              </div>
+              </form>
 
               {/* Tagline */}
               <h4 className="text-center py-3 sm:py-4 font-medium text-teal-200/80 text-base sm:text-lg lg:text-xl">
