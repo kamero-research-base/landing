@@ -8,7 +8,7 @@ const ROUTES = {
   help: "/~/help",
   join: "#auth",
   about: "/about",
-  contact: "/contact",
+  contact: "/contact-us",
 };
 
 // Types

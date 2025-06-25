@@ -12,9 +12,9 @@ const LANGUAGES = [
 const ROUTES = {
   home: "/",
   help: "/~/help",
-  join: "/auth/join",
+  join: "#auth",
   about: "/about",
-  contact: "/contact",
+  contact: "/contact-us",
 } as const;
 
 // Types

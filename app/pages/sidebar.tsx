@@ -77,14 +77,14 @@ const SideBar = () => {
                 <span className="text-sm">Documentation</span>
               </Link>
               
-              <Link
-                href={"#auth"}
-                onClick={()=>setIsAuth(true)}
+              <div
+                
+                onClick={()=>{setIsAuth(true)}}
                 className="flex items-center justify-center mt-3 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-medium rounded-xl hover:from-teal-500 hover:to-teal-600 transition-all duration-200 shadow-lg shadow-teal-900/50"
               >
                 <i className="bi bi-rocket-takeoff mr-2 text-sm"></i>
                 <span className="text-sm">Get Started</span>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
