@@ -189,7 +189,7 @@ const MobileMenu: React.FC<{
             <div className="pt-4 border-t border-teal-800/30">
               <Link 
                 href={ROUTES.join} 
-                onClick={()=>{handleLinkClick(); setIsAuth(true)}}
+                onClick={()=>{setIsAuth(true)}}
                 className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-medium rounded-lg shadow-lg hover:from-teal-500 hover:to-teal-600 transition-all"
               >
                 <i className="bi bi-rocket-takeoff mr-2" />
