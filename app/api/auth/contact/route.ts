@@ -6,9 +6,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const body = await req.json(); // Correct way to parse JSON data
   
-      const { name, email, message } = body;
+      const { name, email, message, category } = body;
   
-      if (!name || !email || !message) {
+      if ( !email || !message) {
         return NextResponse.json({ error: "All fields are required" }, { status: 400 });
       }
 

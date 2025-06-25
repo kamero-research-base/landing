@@ -17,10 +17,10 @@ const Ratings: React.FC<RatingsProps> = ({ rating }) => {
           <span className="bi bi-star text-gray-400 absolute inset-0"></span>
           {/* Filled star */}
           {index < fullStars ? (
-            <span className="bi bi-star-fill text-orange-500 absolute inset-0"></span>
+            <span className="bi bi-star-fill text-teal-600 absolute inset-0"></span>
           ) : index === fullStars && partialFill > 0 ? (
             <span
-              className="bi bi-star-fill text-orange-500 absolute inset-0"
+              className="bi bi-star-fill text-teal-600 absolute inset-0"
               style={{
                 width: `${partialFill}%`,
                 overflow: "hidden",
