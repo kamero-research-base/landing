@@ -57,7 +57,7 @@ function highlightText(text: string, query: string): string {
     .filter(word => word.length > 0);
   if (queryWords.length === 0) return text;
   const pattern = new RegExp(`(${queryWords.join('|')})`, 'gi');
-  return text.replace(pattern, '<mark class="bg-teal-100/50 text-teal-900 rounded">$1</mark>');
+  return text.replace(pattern, '<mark class="bg-teal-100/60 text-teal-900 rounded">$1</mark>');
 }
 
 const HighlightedText: React.FC<{ text: string; query: string; className?: string }> = ({ 
@@ -220,12 +220,15 @@ const Researches = () => {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ search: "", sort: "recommends" }),
+        body: JSON.stringify({ 
+          search: query, // Pass the original search query
+          getSuggestions: true // Flag to indicate we want smart suggestions
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setSuggestedResearches(data.slice(0, 10));
+        setSuggestedResearches(data);
       }
     } catch (error) {
       console.error("Error fetching suggested researches:", error);
@@ -360,7 +363,16 @@ const Researches = () => {
             <div>
               <p className="text-amber-800 font-medium">No exact matches found</p>
               <p className="text-amber-700 text-sm mt-1">
-                Your search didn't return any results, but here are some related research papers that might interest you based on popularity and relevance.
+                {query && query.trim() ? (
+                  <>
+                    Your search for "{query}" didn't return exact matches, but here are related research papers 
+                    in similar fields that might interest you.
+                  </>
+                ) : (
+                  <>
+                    Here are some recommended research papers based on popularity and relevance.
+                  </>
+                )}
               </p>
             </div>
           </div>
