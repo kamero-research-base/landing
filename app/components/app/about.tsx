@@ -171,17 +171,22 @@ const AboutUs: React.FC = () => {
             <TeamCard 
               name="Olivier Turikumwe" 
               role="Founder & Chief Executive Officer" 
-              image="/logo.svg" 
+              image="/team/olivier_turikumwe.jpg" 
             />
             <TeamCard 
               name="Joseph Maranatha" 
               role="Lead Technologist & Innovation Director" 
-              image="/logo.svg" 
+              image="/team/joseph_maranatha.jpg" 
             />
             <TeamCard 
-              name="Dorcas Nyiramahoro" 
-              role="Chief Sales & Partnership Manager" 
-              image="/logo.svg" 
+              name="Emmanuel Mugirase" 
+              role="Chief Technical Officer" 
+              image="/team/emmanuel_mugirase.jpg" 
+            />
+            <TeamCard 
+              name="Jackson Mugwiza" 
+              role="Backend Developer" 
+              image="/team/jackson_mugwiza.jpg" 
             />
           </div>
         </Section>
