@@ -1,95 +1,107 @@
 import { NextResponse } from "next/server";
 import client from "../utils/db"; // Adjust path as needed
 
-// Domain-specific related terms mapping
+// Domain-specific related terms mapping (expanded and improved)
 const DOMAIN_RELATIONSHIPS: Record<string, string[]> = {
   // Engineering & Construction
-  "civil engineering": ["construction", "infrastructure", "buildings", "bridges", "structural", "concrete", "foundation", "geotechnical", "transportation", "highway", "urban planning", "surveying", "materials"],
-  "mechanical engineering": ["machines", "mechanics", "thermodynamics", "robotics", "automation", "manufacturing", "design", "CAD", "materials", "dynamics", "fluids"],
-  "electrical engineering": ["circuits", "electronics", "power systems", "signals", "telecommunications", "control systems", "semiconductors", "microprocessors"],
-  "architecture": ["building design", "urban design", "landscape", "interior design", "sustainable design", "construction", "planning", "housing", "structures"],
+  "civil engineering": ["construction", "infrastructure", "buildings", "bridges", "structural", "concrete", "foundation", "geotechnical", "transportation", "highway", "urban planning", "surveying", "materials", "earthquake", "seismic"],
+  "mechanical engineering": ["machines", "mechanics", "thermodynamics", "robotics", "automation", "manufacturing", "design", "CAD", "materials", "dynamics", "fluids", "engine", "mechanical"],
+  "electrical engineering": ["circuits", "electronics", "power systems", "signals", "telecommunications", "control systems", "semiconductors", "microprocessors", "electrical", "electronic"],
+  "architecture": ["building design", "urban design", "landscape", "interior design", "sustainable design", "construction", "planning", "housing", "structures", "architectural"],
   
   // Medical & Health
-  "medicine": ["health", "medical", "clinical", "diagnosis", "treatment", "therapy", "patient care", "disease", "healthcare", "hospital"],
-  "pregnancy": ["maternal health", "obstetrics", "prenatal", "childbirth", "midwifery", "reproductive health", "gynecology", "pediatrics", "neonatal"],
-  "nursing": ["patient care", "healthcare", "clinical practice", "medical", "hospital", "health promotion", "community health"],
+  "medicine": ["health", "medical", "clinical", "diagnosis", "treatment", "therapy", "patient care", "disease", "healthcare", "hospital", "pharmaceutical", "drug"],
+  "pregnancy": ["maternal health", "obstetrics", "prenatal", "childbirth", "midwifery", "reproductive health", "gynecology", "pediatrics", "neonatal", "fertility"],
+  "nursing": ["patient care", "healthcare", "clinical practice", "medical", "hospital", "health promotion", "community health", "nurse", "nursing"],
   
   // Technology & Computing
-  "computer science": ["programming", "software", "algorithms", "data structures", "artificial intelligence", "machine learning", "databases", "networks", "cybersecurity"],
-  "data science": ["analytics", "statistics", "machine learning", "big data", "visualization", "python", "R", "databases", "AI"],
-  "web development": ["frontend", "backend", "javascript", "HTML", "CSS", "React", "Node.js", "database", "API", "responsive design"],
+  "computer science": ["programming", "software", "algorithms", "data structures", "artificial intelligence", "machine learning", "databases", "networks", "cybersecurity", "computing"],
+  "data science": ["analytics", "statistics", "machine learning", "big data", "visualization", "python", "R", "databases", "AI", "data"],
+  "web development": ["frontend", "backend", "javascript", "HTML", "CSS", "React", "Node.js", "database", "API", "responsive design", "web"],
   
   // Business & Economics
-  "business": ["management", "marketing", "finance", "economics", "entrepreneurship", "strategy", "operations", "leadership", "accounting"],
-  "economics": ["finance", "markets", "trade", "policy", "macroeconomics", "microeconomics", "development", "statistics", "business"],
+  "business": ["management", "marketing", "finance", "economics", "entrepreneurship", "strategy", "operations", "leadership", "accounting", "corporate"],
+  "economics": ["finance", "markets", "trade", "policy", "macroeconomics", "microeconomics", "development", "statistics", "business", "economic"],
   "marketing": ["advertising", "branding", "digital marketing", "consumer behavior", "sales", "social media", "market research", "promotion"],
   
   // Sciences
-  "biology": ["life sciences", "genetics", "ecology", "microbiology", "biochemistry", "molecular", "cell", "organisms", "evolution"],
+  "biology": ["life sciences", "genetics", "ecology", "microbiology", "biochemistry", "molecular", "cell", "organisms", "evolution", "biological"],
   "chemistry": ["chemical", "reactions", "organic", "inorganic", "analytical", "physical chemistry", "biochemistry", "materials", "laboratory"],
-  "physics": ["mechanics", "quantum", "thermodynamics", "electromagnetism", "optics", "relativity", "particles", "energy", "forces"],
+  "physics": ["mechanics", "quantum", "thermodynamics", "electromagnetism", "optics", "relativity", "particles", "energy", "forces", "physical"],
   
   // Social Sciences
-  "psychology": ["mental health", "behavior", "cognitive", "clinical", "developmental", "social psychology", "counseling", "therapy", "research"],
-  "sociology": ["society", "social", "culture", "community", "demographics", "social behavior", "institutions", "research methods"],
-  "education": ["teaching", "learning", "pedagogy", "curriculum", "assessment", "educational technology", "classroom", "students", "instruction"],
+  "psychology": ["mental health", "behavior", "cognitive", "clinical", "developmental", "social psychology", "counseling", "therapy", "research", "psychological"],
+  "sociology": ["society", "social", "culture", "community", "demographics", "social behavior", "institutions", "research methods", "sociological"],
+  "education": ["teaching", "learning", "pedagogy", "curriculum", "assessment", "educational technology", "classroom", "students", "instruction", "educational"],
   
   // Environmental & Agricultural
-  "agriculture": ["farming", "crops", "livestock", "soil", "irrigation", "sustainable agriculture", "food production", "horticulture", "agronomy"],
-  "environmental": ["ecology", "sustainability", "climate", "conservation", "pollution", "renewable energy", "biodiversity", "natural resources"]
+  "agriculture": ["farming", "crops", "livestock", "soil", "irrigation", "sustainable agriculture", "food production", "horticulture", "agronomy", "agricultural"],
+  "environmental": ["ecology", "sustainability", "climate", "conservation", "pollution", "renewable energy", "biodiversity", "natural resources", "environment"]
 };
 
-// Function to find related terms for a search query
+// Improved function to find related terms
 function findRelatedTerms(searchQuery: string): string[] {
-  const query = searchQuery.toLowerCase();
+  const query = searchQuery.toLowerCase().trim();
   const relatedTerms: Set<string> = new Set();
   
-  // Check each domain for matches
+  // ALWAYS include the original search term
+  relatedTerms.add(query);
+  
+  // Direct domain matches - if query matches a domain exactly
   for (const [domain, terms] of Object.entries(DOMAIN_RELATIONSHIPS)) {
-    // Check if query contains the domain or if domain contains the query
-    if (domain.includes(query) || query.includes(domain)) {
-      terms.forEach(term => relatedTerms.add(term));
+    if (domain === query || domain.includes(query) || query.includes(domain)) {
       relatedTerms.add(domain);
+      // Add all related terms for exact domain matches
+      terms.forEach(term => relatedTerms.add(term));
     }
-    
-    // Check if query matches any of the related terms
+  }
+  
+  // Check if query is a term in any domain
+  for (const [domain, terms] of Object.entries(DOMAIN_RELATIONSHIPS)) {
     for (const term of terms) {
-      if (term.includes(query) || query.includes(term)) {
-        // Add all terms from this domain
-        terms.forEach(t => relatedTerms.add(t));
+      if (term === query || term.includes(query) || query.includes(term)) {
         relatedTerms.add(domain);
+        // Add related terms from the same domain
+        terms.slice(0, 10).forEach(t => relatedTerms.add(t));
         break;
       }
     }
   }
   
-  // If no specific domain found, try to find partial matches
-  if (relatedTerms.size === 0) {
-    const queryWords = query.split(/\s+/);
-    for (const word of queryWords) {
-      if (word.length < 3) continue; // Skip very short words
+  // Check individual words in the query for partial matches
+  const queryWords = query.split(/\s+/).filter(word => word.length >= 3);
+  
+  for (const word of queryWords) {
+    for (const [domain, terms] of Object.entries(DOMAIN_RELATIONSHIPS)) {
+      // Check if word matches domain
+      if (domain.includes(word)) {
+        relatedTerms.add(domain);
+        terms.slice(0, 5).forEach(term => relatedTerms.add(term));
+      }
       
-      for (const [domain, terms] of Object.entries(DOMAIN_RELATIONSHIPS)) {
-        if (domain.includes(word)) {
-          terms.slice(0, 5).forEach(term => relatedTerms.add(term));
-        }
-        for (const term of terms) {
-          if (term.includes(word)) {
-            relatedTerms.add(term);
-            if (relatedTerms.size > 10) break;
-          }
+      // Check if word matches any term
+      for (const term of terms) {
+        if (term.includes(word) && term.length - word.length <= 3) { // Avoid too broad matches
+          relatedTerms.add(term);
         }
       }
     }
   }
   
-  return Array.from(relatedTerms).slice(0, 15); // Return up to 15 related terms
+  // Ensure original query is always first
+  const termsArray = Array.from(relatedTerms);
+  const queryIndex = termsArray.indexOf(query);
+  if (queryIndex > 0) {
+    termsArray.splice(queryIndex, 1);
+    termsArray.unshift(query);
+  }
+  
+  return termsArray.slice(0, 25); // Increased to 25 for better coverage
 }
 
 export async function POST(req: Request) {
   let requestBody;
        
-  // Safe JSON parsing
   try {
     requestBody = await req.json();
   } catch (error) {
@@ -101,82 +113,15 @@ export async function POST(req: Request) {
  
     // Handle suggestions request (when no results found)
     if (getSuggestions && search) {
+      console.log("Getting suggestions for:", search);
+      
       const searchValue = search.trim().toLowerCase();
       const relatedTerms = findRelatedTerms(searchValue);
       
-      // If we found related terms, use them for suggestions
-      if (relatedTerms.length > 0) {
-        const suggestionQuery = `
-          WITH suggestions AS (
-            SELECT 
-              r.id,
-              r.title,
-              r.researcher,
-              r.status,
-              r.progress_status,
-              r.year,
-              r.abstract,
-              r.document,
-              r.document_type,
-              r.url,
-              r.category,
-              r.ratings,
-              r.hashed_id,
-              r.created_at,
-              i.id AS institution_id,
-              i.name AS institute,
-              s.name AS school,
-              s.id AS school_id,
-              
-              -- Scoring based on related terms
-              (
-                SELECT COALESCE(SUM(
-                  CASE 
-                    WHEN LOWER(r.title) LIKE '%' || term || '%' THEN 10
-                    WHEN LOWER(r.abstract) LIKE '%' || term || '%' THEN 7
-                    WHEN LOWER(r.category) LIKE '%' || term || '%' THEN 8
-                    WHEN LOWER(r.researcher) LIKE '%' || term || '%' THEN 5
-                    ELSE 0
-                  END
-                ), 0)
-                FROM unnest($1::text[]) AS term
-              ) AS relevance_score,
-              
-              r.ratings AS quality_score
-              
-            FROM researches r
-            JOIN institutions i ON CAST(i.id AS TEXT) = r.institution
-            JOIN schools s ON CAST(s.id AS TEXT) = r.school
-            WHERE r.status = 'Published'
-              AND r.ratings > 2.0  -- Only suggest quality content
-          )
-          SELECT *
-          FROM suggestions
-          WHERE relevance_score > 0  -- Must match at least one related term
-          ORDER BY relevance_score DESC, quality_score DESC
-          LIMIT 10
-        `;
-        
-        const suggestions = await client.query(suggestionQuery, [relatedTerms]);
-        
-        // If we found related suggestions, return them
-        if (suggestions.rows.length > 0) {
-          return NextResponse.json(suggestions.rows, { status: 200 });
-        }
-      }
+      console.log("Related terms found:", relatedTerms);
       
-      // Fallback: If no related terms found or no matches, return top-rated in similar categories
-      const fallbackQuery = `
-        WITH category_suggestions AS (
-          SELECT DISTINCT r.category
-          FROM researches r
-          WHERE r.status = 'Published'
-            AND (
-              similarity(LOWER(r.category), $1) > 0.2 OR
-              similarity(LOWER(r.title), $1) > 0.1
-            )
-          LIMIT 5
-        )
+      // Simplified suggestion query using basic LIKE and ILIKE
+      const suggestionQuery = `
         SELECT 
           r.id,
           r.title,
@@ -196,32 +141,213 @@ export async function POST(req: Request) {
           i.name AS institute,
           s.name AS school,
           s.id AS school_id,
-          r.ratings AS relevance_score,
-          100 AS match_coverage
+          
+          -- Improved scoring for exact and partial matches
+          (
+            -- Exact word match in title (highest priority)
+            CASE 
+              WHEN LOWER(r.title) LIKE '% ' || $1 || ' %' OR
+                   LOWER(r.title) LIKE $1 || ' %' OR
+                   LOWER(r.title) LIKE '% ' || $1 OR
+                   LOWER(r.title) = $1 
+              THEN 50 
+              ELSE 0 
+            END +
+            -- Partial match in title
+            CASE WHEN LOWER(r.title) LIKE '%' || $1 || '%' THEN 25 ELSE 0 END +
+            -- Exact word match in category
+            CASE 
+              WHEN LOWER(r.category) LIKE '% ' || $1 || ' %' OR
+                   LOWER(r.category) LIKE $1 || ' %' OR
+                   LOWER(r.category) LIKE '% ' || $1 OR
+                   LOWER(r.category) = $1 
+              THEN 30 
+              ELSE 0 
+            END +
+            -- Partial match in category
+            CASE WHEN LOWER(r.category) LIKE '%' || $1 || '%' THEN 15 ELSE 0 END +
+            -- Abstract matches
+            CASE WHEN LOWER(r.abstract) LIKE '%' || $1 || '%' THEN 10 ELSE 0 END +
+            -- Researcher matches
+            CASE WHEN LOWER(r.researcher) LIKE '%' || $1 || '%' THEN 8 ELSE 0 END +
+            -- Quality bonus (reduced to avoid overshadowing relevance)
+            (r.ratings * 2)
+          ) AS base_score,
+          
+          r.ratings AS quality_score
+          
         FROM researches r
         JOIN institutions i ON CAST(i.id AS TEXT) = r.institution
         JOIN schools s ON CAST(s.id AS TEXT) = r.school
         WHERE r.status = 'Published'
-          AND r.ratings > 3.0
+          AND r.ratings > 1.0  -- Lowered to be more inclusive
           AND (
-            r.category IN (SELECT category FROM category_suggestions)
-            OR r.ratings > 4.0  -- Include highly rated papers as last resort
+            LOWER(r.title || ' ' || r.category || ' ' || r.abstract || ' ' || r.researcher) LIKE '%' || $1 || '%'
           )
-        ORDER BY 
-          CASE WHEN r.category IN (SELECT category FROM category_suggestions) THEN 0 ELSE 1 END,
-          r.ratings DESC,
-          r.created_at DESC
-        LIMIT 10
+        ORDER BY base_score DESC, r.ratings DESC
+        LIMIT 10  -- Increased from 5
       `;
       
-      const fallbackSuggestions = await client.query(fallbackQuery, [searchValue]);
-      return NextResponse.json(fallbackSuggestions.rows, { status: 200 });
+      let suggestions = await client.query(suggestionQuery, [searchValue]);
+      
+      // If no direct matches and we have related terms, try those
+      if (suggestions.rows.length === 0 && relatedTerms.length > 0) {
+        console.log("Trying related terms search...");
+        
+        // The related terms are already ordered with most relevant first
+        const relatedTermsToSearch = relatedTerms.slice(0, 20);
+        
+        // FIXED: Include the ORDER BY CASE expression in SELECT and remove DISTINCT
+        const relatedTermsQuery = `
+          SELECT 
+            r.id,
+            r.title,
+            r.researcher,
+            r.status,
+            r.progress_status,
+            r.year,
+            r.abstract,
+            r.document,
+            r.document_type,
+            r.url,
+            r.category,
+            r.ratings,
+            r.hashed_id,
+            r.created_at,
+            i.id AS institution_id,
+            i.name AS institute,
+            s.name AS school,
+            s.id AS school_id,
+            
+            -- Include the ordering expression in SELECT
+            CASE 
+              WHEN LOWER(r.title || ' ' || r.category || ' ' || r.abstract) LIKE '%' || $2 || '%' 
+              THEN 0 
+              ELSE 1 
+            END AS original_match_order,
+            
+            (
+              -- Prioritize papers that match the original search term or primary domain
+              CASE 
+                WHEN LOWER(r.title || ' ' || r.category || ' ' || r.abstract) LIKE '%' || $2 || '%' 
+                THEN 100 
+                ELSE 0 
+              END +
+              
+              -- Score for matching related terms with weighted importance
+              (
+                SELECT SUM(
+                  CASE 
+                    -- First few terms in array are most important (original query and direct domain)
+                    WHEN term_with_idx.idx <= 3 AND 
+                         LOWER(r.title || ' ' || r.category) LIKE '%' || term_with_idx.term || '%'
+                    THEN 20
+                    -- Title matches are most valuable
+                    WHEN LOWER(r.title) LIKE '%' || term_with_idx.term || '%'
+                    THEN 15
+                    -- Category matches are very important
+                    WHEN LOWER(r.category) LIKE '%' || term_with_idx.term || '%'
+                    THEN 12
+                    -- Abstract matches
+                    WHEN LOWER(r.abstract) LIKE '%' || term_with_idx.term || '%'
+                    THEN 5
+                    -- Researcher matches
+                    WHEN LOWER(r.researcher) LIKE '%' || term_with_idx.term || '%'
+                    THEN 3
+                    ELSE 0
+                  END
+                )
+                FROM (
+                  SELECT term, row_number() OVER () as idx
+                  FROM unnest($1::text[]) AS term
+                ) term_with_idx
+              ) +
+              
+              -- Small bonus for quality, but not dominant
+              (r.ratings * 1.5)
+            ) AS relevance_score,
+            
+            -- Count distinct matching terms
+            (
+              SELECT COUNT(DISTINCT term)
+              FROM unnest($1::text[]) AS term
+              WHERE LOWER(r.title || ' ' || r.category || ' ' || r.abstract || ' ' || r.researcher) 
+                    LIKE '%' || term || '%'
+            ) AS terms_matched
+            
+          FROM researches r
+          JOIN institutions i ON CAST(i.id AS TEXT) = r.institution
+          JOIN schools s ON CAST(s.id AS TEXT) = r.school
+          WHERE r.status = 'Published'
+            AND r.ratings >= 1.0  -- Very inclusive
+            AND (
+              -- Must match at least one related term
+              EXISTS (
+                SELECT 1
+                FROM unnest($1::text[]) AS term
+                WHERE LOWER(r.title || ' ' || r.category || ' ' || r.abstract || ' ' || r.researcher) 
+                      LIKE '%' || term || '%'
+              )
+            )
+          ORDER BY 
+            original_match_order,
+            relevance_score DESC,
+            terms_matched DESC,
+            r.year DESC
+          LIMIT 30  -- Get more results for better variety
+        `;
+        
+        // Pass both the related terms array and the original search value
+        suggestions = await client.query(relatedTermsQuery, [relatedTermsToSearch, searchValue]);
+      }
+      
+      // Final fallback: get top-rated papers from similar categories
+      if (suggestions.rows.length === 0) {
+        console.log("Using fallback suggestions...");
+        
+        const fallbackQuery = `
+          SELECT 
+            r.id,
+            r.title,
+            r.researcher,
+            r.status,
+            r.progress_status,
+            r.year,
+            r.abstract,
+            r.document,
+            r.document_type,
+            r.url,
+            r.category,
+            r.ratings,
+            r.hashed_id,
+            r.created_at,
+            i.id AS institution_id,
+            i.name AS institute,
+            s.name AS school,
+            s.id AS school_id,
+            r.ratings AS relevance_score,
+            1 AS terms_matched
+          FROM researches r
+          JOIN institutions i ON CAST(i.id AS TEXT) = r.institution
+          JOIN schools s ON CAST(s.id AS TEXT) = r.school
+          WHERE r.status = 'Published'
+            AND r.ratings >= 2.0  -- Lowered threshold for more variety
+          ORDER BY 
+            r.created_at DESC,  -- Prioritize recent research
+            r.ratings DESC
+          LIMIT 20  -- Increased from 6 to 20
+        `;
+        
+        suggestions = await client.query(fallbackQuery);
+      }
+      
+      console.log("Returning", suggestions.rows.length, "suggestions");
+      return NextResponse.json(suggestions.rows, { status: 200 });
     }
  
-    // Return empty results for empty search
+    // Main search logic (unchanged from your original)
     const searchValue = search ? search.trim() : "";
     if (!searchValue) {
-      // Return all results when no search query (for initial load)
       const allResultsQuery = `
         SELECT 
           r.id,
@@ -252,7 +378,6 @@ export async function POST(req: Request) {
       
       let finalQuery = allResultsQuery;
       
-      // Apply sorting for empty search
       if (sort) {
         if (sort === "new") {
           finalQuery += ` ORDER BY r.created_at DESC`;
@@ -275,10 +400,10 @@ export async function POST(req: Request) {
       return NextResponse.json(allResults.rows, { status: 200 });
     }
  
-    // Clean and prepare search terms
+    // Regular search logic (simplified to remove similarity function dependencies)
     const searchTerms = searchValue
       .toLowerCase()
-      .replace(/[^\w\s]/g, ' ') // Remove special characters
+      .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
       .filter((term: string) => term.length > 0);
     
@@ -286,6 +411,7 @@ export async function POST(req: Request) {
       return NextResponse.json([], { status: 200 });
     }
 
+    // Simplified search query without similarity functions
     let query = `
       WITH search_results AS (
         SELECT 
@@ -308,49 +434,40 @@ export async function POST(req: Request) {
           s.name AS school,
           s.id AS school_id,
           
-          -- Enhanced scoring system
+          -- Simplified scoring system using only LIKE matches
           (
-            -- Exact phrase bonus (highest priority)
+            -- Exact phrase bonus
             CASE WHEN LOWER(r.title || ' ' || r.researcher || ' ' || r.abstract || ' ' || r.category) 
-                 LIKE '%' || $1 || '%' THEN 50 ELSE 0 END +
+                 LIKE '%' || $1 || '%' THEN 40 ELSE 0 END +
             
-            -- Title matches (high priority)
-            (CASE WHEN similarity(LOWER(r.title), $1) > 0.1 THEN similarity(LOWER(r.title), $1) * 30 ELSE 0 END) +
+            -- Individual field matches
+            CASE WHEN LOWER(r.title) LIKE '%' || $1 || '%' THEN 20 ELSE 0 END +
+            CASE WHEN LOWER(r.researcher) LIKE '%' || $1 || '%' THEN 15 ELSE 0 END +
+            CASE WHEN LOWER(r.category) LIKE '%' || $1 || '%' THEN 12 ELSE 0 END +
+            CASE WHEN LOWER(r.abstract) LIKE '%' || $1 || '%' THEN 8 ELSE 0 END +
+            CASE WHEN LOWER(r.document_type) LIKE '%' || $1 || '%' THEN 5 ELSE 0 END +
             
-            -- Researcher matches (high priority)
-            (CASE WHEN similarity(LOWER(r.researcher), $1) > 0.1 THEN similarity(LOWER(r.researcher), $1) * 25 ELSE 0 END) +
-            
-            -- Abstract matches (medium priority)
-            (CASE WHEN similarity(LOWER(r.abstract), $1) > 0.1 THEN similarity(LOWER(r.abstract), $1) * 15 ELSE 0 END) +
-            
-            -- Category matches (medium priority)
-            (CASE WHEN similarity(LOWER(r.category), $1) > 0.1 THEN similarity(LOWER(r.category), $1) * 20 ELSE 0 END) +
-            
-            -- Document type matches (lower priority)
-            (CASE WHEN similarity(LOWER(r.document_type), $1) > 0.1 THEN similarity(LOWER(r.document_type), $1) * 10 ELSE 0 END) +
-            
-            -- Individual word matches bonus
+            -- Individual word matches
             (
               SELECT COALESCE(SUM(
                 CASE 
-                  WHEN LOWER(r.title) LIKE '%' || word || '%' THEN 8
-                  WHEN LOWER(r.researcher) LIKE '%' || word || '%' THEN 6
-                  WHEN LOWER(r.abstract) LIKE '%' || word || '%' THEN 4
-                  WHEN LOWER(r.category) LIKE '%' || word || '%' THEN 5
-                  WHEN LOWER(r.document_type) LIKE '%' || word || '%' THEN 2
-                  WHEN LOWER(r.year::text) LIKE '%' || word || '%' THEN 3
+                  WHEN LOWER(r.title) LIKE '%' || word || '%' THEN 6
+                  WHEN LOWER(r.researcher) LIKE '%' || word || '%' THEN 4
+                  WHEN LOWER(r.category) LIKE '%' || word || '%' THEN 4
+                  WHEN LOWER(r.abstract) LIKE '%' || word || '%' THEN 2
+                  WHEN LOWER(r.document_type) LIKE '%' || word || '%' THEN 1
                   ELSE 0
                 END
               ), 0)
               FROM unnest($2::text[]) AS word
             ) +
             
-            -- Ratings bonus (quality indicator)
-            (r.ratings * 2)
+            -- Quality bonus
+            (r.ratings * 1.5)
             
           ) AS relevance_score,
           
-          -- Match coverage (percentage of search terms found)
+          -- Match coverage
           (
             SELECT (COUNT(*)::float / array_length($2, 1)) * 100
             FROM unnest($2::text[]) AS word
@@ -363,28 +480,21 @@ export async function POST(req: Request) {
         JOIN schools s ON CAST(s.id AS TEXT) = r.school
         WHERE r.status = 'Published'
           AND (
-            -- Must match at least one search term
             EXISTS (
               SELECT 1 FROM unnest($2::text[]) AS word
               WHERE LOWER(r.title || ' ' || r.researcher || ' ' || r.abstract || ' ' || r.category || ' ' || r.document_type || ' ' || r.year::text) 
                     LIKE '%' || word || '%'
             )
-            OR
-            -- Or have good similarity scores
-            similarity(LOWER(r.title), $1) > 0.2 OR
-            similarity(LOWER(r.researcher), $1) > 0.2 OR
-            similarity(LOWER(r.abstract), $1) > 0.15 OR
-            similarity(LOWER(r.category), $1) > 0.3
           )
       )
       SELECT *
       FROM search_results
-      WHERE relevance_score > 0 -- Only return results with some relevance
+      WHERE relevance_score > 0
     `;
 
     const params: any[] = [searchValue.toLowerCase(), searchTerms];
 
-    // Enhanced sorting logic
+    // Sorting
     if (sort) {
       if (sort === "new") {
         query += ` ORDER BY created_at DESC, relevance_score DESC`;
@@ -395,22 +505,18 @@ export async function POST(req: Request) {
       } else if (sort === "recommends") {
         query += ` AND ratings > 2.5 ORDER BY ratings DESC, relevance_score DESC`;
       } else {
-        // Default: best matches first
         query += ` ORDER BY relevance_score DESC, match_coverage DESC, ratings DESC, created_at DESC`;
       }
     } else {
-      // Default sorting prioritizes relevance
       query += ` ORDER BY relevance_score DESC, match_coverage DESC, ratings DESC, created_at DESC`;
     }
 
-    // Limit results to prevent overwhelming response
     query += ` LIMIT 100`;
 
     const result = await client.query(query, params);
     
-    // Filter out very low relevance results
-    const filteredResults = result.rows.filter((row: any ) => 
-      row.relevance_score >= 1 || row.match_coverage >= 20
+    const filteredResults = result.rows.filter((row: any) => 
+      row.relevance_score >= 1 || row.match_coverage >= 15
     );
 
     return NextResponse.json(filteredResults, { status: 200 });
