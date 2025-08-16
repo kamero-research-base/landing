@@ -20,6 +20,7 @@ interface Research {
   document: string;
   document_type: string;
   created_at: string;
+  is_public: boolean;
 }
 
 function formatDate(dateString: string) {
@@ -366,7 +367,7 @@ export default function ResearchViewPage() {
                 </div>
 
                 {/* Document Access */}
-                {research.document && (
+                {research.document && research.is_public &&(
                   <div className="bg-white rounded-lg shadow-sm border">
                     <div className="p-4 sm:p-6">
                       <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
