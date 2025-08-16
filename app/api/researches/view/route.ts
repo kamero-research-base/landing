@@ -29,6 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       r.document,
       r.document_type,
       r.url,
+      r.is_public,
       r.category,
       r.hashed_id,
       r.created_at,
