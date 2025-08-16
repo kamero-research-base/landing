@@ -21,7 +21,7 @@ interface Research {
 const headers = [
   { name: "all", icon: "bi-collection" },
   { name: "new", icon: "bi-plus-circle" },
-  { name: "trends", icon: "bi-graph-up-arrow" },
+  { name: "trendings", icon: "bi-graph-up-arrow" },
   { name: "recommends", icon: "bi-award" },
 ];
 
