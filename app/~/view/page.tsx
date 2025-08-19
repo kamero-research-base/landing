@@ -46,6 +46,423 @@ function getStatusStyle(status: string) {
   }
 }
 
+// Secure Document Viewer Modal Component
+const DocumentViewerModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  documentUrl: string;
+  documentType: string;
+  title: string;
+}> = ({ isOpen, onClose, documentUrl, documentType, title }) => {
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Zoom controls
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 25, 200));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 25, 50));
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(100);
+  };
+
+  // Fullscreen toggle
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await modalRef.current?.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.error("Error attempting to enable fullscreen:", err);
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      } catch (err) {
+        console.error("Error attempting to exit fullscreen:", err);
+      }
+    }
+  };
+
+  // Handle fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !document.fullscreenElement) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  // Prevent right-click context menu
+  useEffect(() => {
+    const preventContextMenu = (e: MouseEvent) => {
+      if (isOpen) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    const preventDrag = (e: DragEvent) => {
+      if (isOpen) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    const preventSelection = (e: Event) => {
+      if (isOpen && e.target && (e.target as HTMLElement).closest('.document-content')) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('contextmenu', preventContextMenu);
+      document.addEventListener('dragstart', preventDrag);
+      document.addEventListener('selectstart', preventSelection);
+    }
+
+    return () => {
+      document.removeEventListener('contextmenu', preventContextMenu);
+      document.removeEventListener('dragstart', preventDrag);
+      document.removeEventListener('selectstart', preventSelection);
+    };
+  }, [isOpen]);
+
+  // Reset states when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setZoomLevel(100);
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else {
+      // Exit fullscreen when closing modal
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+  }, [isOpen]);
+
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+    
+    // Try to inject CSS to hide download buttons in iframe (may not work due to CORS)
+    try {
+      const iframe = iframeRef.current;
+      if (iframe && iframe.contentWindow) {
+        const style = document.createElement('style');
+        style.textContent = `
+          #toolbar { display: none !important; }
+          .ndfHFb-c4YZDc-Wrql6b { display: none !important; }
+          .ndfHFb-c4YZDc-GSQQnc-LgbsSe { display: none !important; }
+          [role="toolbar"] { display: none !important; }
+          .drive-viewer-toolstrip { display: none !important; }
+        `;
+        iframe.contentDocument?.head?.appendChild(style);
+      }
+    } catch (e) {
+      // Expected to fail due to CORS, but we try anyway
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Determine if the document type is an image
+  const isImage = documentType?.toLowerCase().includes('image') || 
+                  documentUrl?.match(/\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i);
+  
+  // Check if it's a Google Drive URL
+  const isGoogleDrive = documentUrl?.includes('drive.google.com');
+  
+  // Process the URL for viewing
+  const getViewableUrl = () => {
+    if (isGoogleDrive) {
+      // Extract file ID and use preview mode without toolbar
+      const fileIdMatch = documentUrl.match(/[-\w]{25,}/);
+      if (fileIdMatch) {
+        // Add parameters to try to hide controls
+        return `https://drive.google.com/file/d/${fileIdMatch[0]}/preview?rm=minimal`;
+      }
+    }
+    // For PDFs, use Google Docs viewer
+    if (documentUrl?.toLowerCase().endsWith('.pdf') || documentType?.toLowerCase().includes('pdf')) {
+      return `https://docs.google.com/viewer?url=${encodeURIComponent(documentUrl)}&embedded=true&rm=minimal`;
+    }
+    return documentUrl;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      {/* Enhanced backdrop with blur and semi-transparency */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        onClick={onClose}
+        style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)'
+        }}
+      />
+
+      {/* Modal Content */}
+      <div 
+        ref={modalRef}
+        className={`relative ${isFullscreen ? 'w-full h-full' : 'w-[92vw] h-[92vh] max-w-7xl'} bg-gray-900 shadow-2xl flex flex-col overflow-hidden transition-all duration-300`}
+        style={{ borderRadius: isFullscreen ? '0' : '0.75rem' }}
+      >
+        
+        {/* Minimalist Header */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-900/95 to-transparent">
+          <div className="flex items-center gap-3">
+            <h3 className="text-white/90 text-sm font-medium truncate max-w-[300px] lg:max-w-[500px]" title={title}>
+              {title}
+            </h3>
+          </div>
+
+          {/* Control buttons */}
+          <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 bg-gray-800/80 backdrop-blur-sm rounded-full px-3 py-1.5">
+              <button
+                onClick={handleZoomOut}
+                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all"
+                title="Zoom Out (-))"
+                disabled={zoomLevel <= 50}
+              >
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+              </button>
+              
+              <span className="px-3 text-xs font-medium text-white/80 min-w-[50px] text-center select-none">
+                {zoomLevel}%
+              </span>
+              
+              <button
+                onClick={handleZoomIn}
+                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all"
+                title="Zoom In (+)"
+                disabled={zoomLevel >= 200}
+              >
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+
+              <div className="w-px h-5 bg-gray-600/50 mx-1"></div>
+              
+              <button
+                onClick={handleZoomReset}
+                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all"
+                title="Reset Zoom (R)"
+              >
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Fullscreen Button */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-2.5 bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 rounded-full transition-all"
+              title={isFullscreen ? "Exit Fullscreen (F)" : "Fullscreen (F)"}
+            >
+              {isFullscreen ? (
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              )}
+            </button>
+
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="p-2.5 bg-red-600/80 backdrop-blur-sm hover:bg-red-700/80 rounded-full transition-all ml-2"
+              title="Close (ESC)"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Document Viewer Area */}
+        <div 
+          ref={containerRef}
+          className="flex-1 bg-gray-950 relative overflow-hidden document-content"
+          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+        >
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-sm text-gray-400">Loading secure document viewer...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Document Content */}
+          {isImage ? (
+            // Image viewer with protection
+            <div 
+              className="w-full h-full flex items-center justify-center p-8 select-none"
+              style={{
+                transform: `scale(${zoomLevel / 100})`,
+                transformOrigin: 'center center',
+                transition: 'transform 0.2s ease-in-out',
+                userSelect: 'none',
+                // @ts-ignore - vendor prefixes
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none'
+              } as React.CSSProperties}
+              onContextMenu={(e) => e.preventDefault()}
+              onDragStart={(e) => e.preventDefault()}
+            >
+              <img
+                src={documentUrl}
+                alt={title}
+                className="max-w-full max-h-full object-contain select-none pointer-events-none"
+                style={{ 
+                  userSelect: 'none',
+                  // @ts-ignore - vendor prefixes for older browsers
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserDrag: 'none',
+                  pointerEvents: 'none'
+                } as React.CSSProperties}
+                draggable={false}
+                onLoad={() => setIsLoading(false)}
+                onError={() => {
+                  setIsLoading(false);
+                  alert("Failed to load image");
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              />
+            </div>
+          ) : (
+            // PDF and document viewer with iframe
+            <div className="w-full h-full relative">
+              <iframe
+                ref={iframeRef}
+                src={getViewableUrl()}
+                className="absolute inset-0 w-full h-full bg-white"
+                style={{
+                  width: `${100 / (zoomLevel / 100)}%`,
+                  height: `${100 / (zoomLevel / 100)}%`,
+                  border: 'none',
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: `translate(-50%, -50%) scale(${zoomLevel / 100})`
+                }}
+                onLoad={handleIframeLoad}
+                onError={() => {
+                  setIsLoading(false);
+                  console.error("Failed to load document");
+                }}
+                title={title}
+                sandbox="allow-same-origin allow-scripts"
+                allowFullScreen={false}
+              />
+              {/* Overlay to prevent interaction with certain areas */}
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{ zIndex: 5 }}
+              />
+            </div>
+          )}
+
+          {/* Watermark overlay (optional) */}
+          <div 
+            className="absolute inset-0 pointer-events-none select-none"
+            style={{
+              background: 'repeating-linear-gradient(45deg, transparent, transparent 100px, rgba(0,0,0,0.02) 100px, rgba(0,0,0,0.02) 200px)',
+              zIndex: 10
+            }}
+          />
+        </div>
+
+        {/* Keyboard shortcuts hint */}
+        <div className="absolute bottom-4 left-4 text-xs text-gray-500 select-none">
+          <span className="bg-gray-800/70 backdrop-blur-sm px-2 py-1 rounded">
+            ESC to close • F for fullscreen • +/- for zoom
+          </span>
+        </div>
+      </div>
+
+      {/* Additional CSS for security */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .document-content * {
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: none !important;
+          -khtml-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
+        }
+        
+        .document-content img {
+          pointer-events: none !important;
+          -webkit-user-drag: none !important;
+          -khtml-user-drag: none !important;
+          -moz-user-drag: none !important;
+          -o-user-drag: none !important;
+          user-drag: none !important;
+        }
+        
+        iframe {
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: none !important;
+        }
+      `}} />
+    </div>
+  );
+};
+
 // Comment Modal Component
 const CommentModal: React.FC<{ 
   isOpen: boolean; 
@@ -669,6 +1086,7 @@ export default function ResearchViewPage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDocumentViewerModal, setShowDocumentViewerModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -846,7 +1264,7 @@ export default function ResearchViewPage() {
                   </div>
                 </div>
 
-                {/* Document Access */}
+                {/* Document Access - Modified */}
                 {research.document && research.is_public &&(
                   <div className="bg-white rounded-lg shadow-sm border">
                     <div className="p-4 sm:p-6">
@@ -864,15 +1282,13 @@ export default function ResearchViewPage() {
                             <p className="text-xs sm:text-sm text-gray-600">{research.document_type || "PDF"}</p>
                           </div>
                         </div>
-                        <Link
-                          href={research.document}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => setShowDocumentViewerModal(true)}
                           className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex-shrink-0"
                         >
                           <i className="bi bi-eye"></i>
                           View Document
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -988,6 +1404,13 @@ export default function ResearchViewPage() {
       {/* Modals */}
       {research && (
         <>
+          <DocumentViewerModal 
+            isOpen={showDocumentViewerModal}
+            onClose={() => setShowDocumentViewerModal(false)}
+            documentUrl={research.document}
+            documentType={research.document_type}
+            title={research.title}
+          />
           <ShareModal 
             isOpen={showShareModal}
             onClose={() => setShowShareModal(false)}
