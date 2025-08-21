@@ -46,10 +46,55 @@ function getStatusStyle(status: string) {
   }
 }
 
-// Secure Document Viewer Modal Component
-const DocumentViewerModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
+// Helper function to determine document type
+const getDocumentType = (documentUrl: string, documentType: string) => {
+  const url = documentUrl?.toLowerCase() || '';
+  const type = documentType?.toLowerCase() || '';
+
+  if (type.includes('pdf') || url.endsWith('.pdf')) {
+    return 'pdf';
+  }
+  if (type.includes('word') || type.includes('docx') || type.includes('doc') ||
+      url.match(/\.(docx?|DOCX?)$/i)) {
+    return 'word';
+  }
+  return 'unknown';
+};
+
+// Helper function to get document icon and color
+const getDocumentIconInfo = (documentUrl: string, documentType: string) => {
+  const docType = getDocumentType(documentUrl, documentType);
+
+  switch (docType) {
+    case 'pdf':
+      return {
+        icon: 'bi-file-earmark-pdf',
+        color: 'text-red-600',
+        bgColor: 'bg-red-100',
+        label: 'PDF Document'
+      };
+    case 'word':
+      return {
+        icon: 'bi-file-earmark-word',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100',
+        label: 'Word Document'
+      };
+    default:
+      return {
+        icon: 'bi-file-earmark',
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100',
+        label: 'Document'
+      };
+  }
+};
+
+
+// Enhanced Document Viewer Modal Component with Targeted Protection and Working Scrollbar
+const DocumentViewerModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
   documentUrl: string;
   documentType: string;
   title: string;
@@ -57,9 +102,50 @@ const DocumentViewerModal: React.FC<{
   const [zoomLevel, setZoomLevel] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [copyAttempts, setCopyAttempts] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningMessage, setWarningMessage] = useState({ title: "", message: "" });
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [scrollTimeout, setScrollTimeout] = useState<NodeJS.Timeout | null>(null);
+  
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const documentContentRef = useRef<HTMLDivElement>(null);
+
+  // Determine document type
+  const docType = getDocumentType(documentUrl, documentType);
+  const isPDF = docType === 'pdf';
+  const isWord = docType === 'word';
+
+  // Enhanced scroll detection
+  const handleScrollStart = () => {
+    setIsScrolling(true);
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+    }
+    const newTimeout = setTimeout(() => {
+      setIsScrolling(false);
+    }, 150); // Allow 150ms of scroll grace period
+    setScrollTimeout(newTimeout);
+  };
+
+  // Helper function to check if click/interaction is in scrollbar area
+  const isInScrollbarArea = (clientX: number, clientY: number): boolean => {
+    if (!documentContentRef.current) return false;
+    
+    const rect = documentContentRef.current.getBoundingClientRect();
+    const scrollbarWidth = 20; // Generous scrollbar width
+    
+    // Check for vertical scrollbar (right edge)
+    const isVerticalScrollbar = clientX > rect.right - scrollbarWidth;
+    
+    // Check for horizontal scrollbar (bottom edge)
+    const isHorizontalScrollbar = clientY > rect.bottom - scrollbarWidth;
+    
+    return isVerticalScrollbar || isHorizontalScrollbar;
+  };
 
   // Zoom controls
   const handleZoomIn = () => {
@@ -103,72 +189,259 @@ const DocumentViewerModal: React.FC<{
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Handle escape key
+  // Show a generic warning
+  const showProtectionWarning = (title: string, message: string) => {
+    setCopyAttempts(prev => prev + 1);
+    setWarningMessage({ title, message });
+    setShowWarning(true);
+    setTimeout(() => setShowWarning(false), 3000);
+  };
+
+  // Enhanced keyboard protection - only for document content
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !document.fullscreenElement) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      // Allow Escape to close modal always
+      if (e.key === 'Escape' && !document.fullscreenElement) {
         onClose();
+        return;
+      }
+
+      // Check if the target is within the document content area
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      // Only apply protection if we're focused within the document content area
+      if (!isInDocumentContent) return;
+
+      // Block print screen attempts
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        e.stopPropagation();
+        showProtectionWarning("Screenshot Blocked", "Taking screenshots of this document is not allowed.");
+        navigator.clipboard.writeText("").catch(() => {});
+        return false;
+      }
+
+      // Block common copy shortcuts
+      const blockedKeys = ['c', 'x', 'a', 's', 'p', 'v'];
+      if ((e.ctrlKey || e.metaKey) && blockedKeys.includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        e.stopPropagation();
+        showProtectionWarning("Action Blocked", "Copying or saving this document is not allowed.");
+        return false;
+      }
+
+      // Block F12 and other developer tools shortcuts
+      if (e.key === 'F12' || 
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) ||
+          (e.key === 'F11') ||
+          ((e.ctrlKey || e.metaKey) && ['u'].includes(e.key.toLowerCase()))) {
+        e.preventDefault();
+        e.stopPropagation();
+        showProtectionWarning("Action Blocked", "Developer tools are disabled for this document.");
+        return false;
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
 
-  // Prevent right-click context menu
+  // Targeted mouse and interaction protection - only for document content
   useEffect(() => {
-    const preventContextMenu = (e: MouseEvent) => {
-      if (isOpen) {
+    const preventDefaultAndWarn = (e: Event, title: string, message: string) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent && !isScrolling) {
         e.preventDefault();
+        e.stopPropagation();
+        showProtectionWarning(title, message);
+        return false;
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (!isOpen) return;
+      
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      // Only apply protection within document content area
+      if (isInDocumentContent) {
+        // Always allow scrollbar interaction
+        if (isInScrollbarArea(e.clientX, e.clientY)) {
+          return; // Allow scrollbar interaction
+        }
+        
+        // Check if this might be a selection attempt (double-click or drag start)
+        if (e.detail > 1) { // Double click or more
+          e.preventDefault();
+          e.stopPropagation();
+          showProtectionWarning("Action Blocked", "Text selection is disabled.");
+          return false;
+        }
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isOpen) return;
+      
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      // If mouse is being dragged and we're not scrolling, it might be selection
+      if (e.buttons === 1 && !isScrolling && isInDocumentContent) {
+        // Always allow scrollbar dragging
+        if (isInScrollbarArea(e.clientX, e.clientY)) {
+          return; // Allow scrollbar dragging
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const preventContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
+        // Allow right-click on scrollbar
+        if (isInScrollbarArea(e.clientX, e.clientY)) {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        showProtectionWarning("Action Blocked", "Right-clicking is disabled.");
         return false;
       }
     };
 
     const preventDrag = (e: DragEvent) => {
-      if (isOpen) {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
+        preventDefaultAndWarn(e, "Action Blocked", "Dragging content is disabled.");
+      }
+    };
+    
+    const preventSelection = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && !isScrolling && isInDocumentContent) {
         e.preventDefault();
+        e.stopPropagation();
+        showProtectionWarning("Action Blocked", "Selecting text is disabled.");
         return false;
       }
     };
 
-    const preventSelection = (e: Event) => {
-      if (isOpen && e.target && (e.target as HTMLElement).closest('.document-content')) {
+    const preventCopy = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
         e.preventDefault();
+        e.stopPropagation();
+        e.clipboardData?.setData('text/plain', 'Copying is disabled for this document');
+        showProtectionWarning("Action Blocked", "Copying content is not allowed.");
         return false;
+      }
+    };
+
+    const preventCut = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
+        preventDefaultAndWarn(e, "Action Blocked", "Cutting content is not allowed.");
+      }
+    };
+    
+    const preventPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
+        preventDefaultAndWarn(e, "Action Blocked", "Pasting content is not allowed.");
+      }
+    };
+
+    // Enhanced scroll detection
+    const handleWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
+        handleScrollStart();
+        // Always allow wheel events for scrolling
+        return;
+      }
+    };
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const isInDocumentContent = documentContentRef.current?.contains(target);
+      
+      if (isOpen && isInDocumentContent) {
+        handleScrollStart();
+        // Always allow scroll events
+        return;
       }
     };
 
     if (isOpen) {
-      document.addEventListener('contextmenu', preventContextMenu);
-      document.addEventListener('dragstart', preventDrag);
-      document.addEventListener('selectstart', preventSelection);
-    }
+      // Use capture phase for targeted events
+      document.addEventListener('contextmenu', preventContextMenu, true);
+      document.addEventListener('dragstart', preventDrag, true);
+      document.addEventListener('selectstart', preventSelection, true);
+      document.addEventListener('copy', preventCopy, true);
+      document.addEventListener('cut', preventCut, true);
+      document.addEventListener('paste', preventPaste, true);
+      document.addEventListener('mousedown', handleMouseDown, true);
+      document.addEventListener('mousemove', handleMouseMove, true);
+      document.addEventListener('wheel', handleWheel, true);
+      document.addEventListener('scroll', handleScroll, true);
 
-    return () => {
-      document.removeEventListener('contextmenu', preventContextMenu);
-      document.removeEventListener('dragstart', preventDrag);
-      document.removeEventListener('selectstart', preventSelection);
-    };
-  }, [isOpen]);
+      return () => {
+        document.removeEventListener('contextmenu', preventContextMenu, true);
+        document.removeEventListener('dragstart', preventDrag, true);
+        document.removeEventListener('selectstart', preventSelection, true);
+        document.removeEventListener('copy', preventCopy, true);
+        document.removeEventListener('cut', preventCut, true);
+        document.removeEventListener('paste', preventPaste, true);
+        document.removeEventListener('mousedown', handleMouseDown, true);
+        document.removeEventListener('mousemove', handleMouseMove, true);
+        document.removeEventListener('wheel', handleWheel, true);
+        document.removeEventListener('scroll', handleScroll, true);
+      };
+    }
+  }, [isOpen, isScrolling]);
 
   // Reset states when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setZoomLevel(100);
       setIsLoading(true);
+      setCopyAttempts(0);
       const timer = setTimeout(() => {
         setIsLoading(false);
       }, 3000);
       return () => clearTimeout(timer);
     } else {
-      // Exit fullscreen when closing modal
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
@@ -177,266 +450,496 @@ const DocumentViewerModal: React.FC<{
 
   const handleIframeLoad = () => {
     setIsLoading(false);
-    
-    // Try to inject CSS to hide download buttons in iframe (may not work due to CORS)
-    try {
-      const iframe = iframeRef.current;
-      if (iframe && iframe.contentWindow) {
-        const style = document.createElement('style');
-        style.textContent = `
-          #toolbar { display: none !important; }
-          .ndfHFb-c4YZDc-Wrql6b { display: none !important; }
-          .ndfHFb-c4YZDc-GSQQnc-LgbsSe { display: none !important; }
-          [role="toolbar"] { display: none !important; }
-          .drive-viewer-toolstrip { display: none !important; }
-        `;
-        iframe.contentDocument?.head?.appendChild(style);
+
+    // For PDF documents, try to inject protection
+    if (isPDF) {
+      try {
+        const iframe = iframeRef.current;
+        if (iframe && iframe.contentWindow && iframe.contentDocument) {
+          const style = document.createElement('style');
+          style.textContent = `
+            * {
+              -webkit-touch-callout: none !important; -webkit-user-select: none !important;
+              -khtml-user-select: none !important; -moz-user-select: none !important;
+              -ms-user-select: none !important; user-select: none !important;
+            }
+            #toolbar, .toolbar, .ndfHFb-c4YZDc-Wrql6b, .ndfHFb-c4YZDc-GSQQnc-LgbsSe,
+            [role="toolbar"], .drive-viewer-toolstrip, #downloadsButton, #printButton,
+            #openFileButton, #viewBookmarkButton, .download, .print, #BusinessBarContainer,
+            .BrandBar, .CommandBarContainer { display: none !important; }
+            .textLayer {
+              -webkit-user-select: none !important; -moz-user-select: none !important;
+              -ms-user-select: none !important; user-select: none !important;
+            }
+          `;
+          iframe.contentDocument.head?.appendChild(style);
+
+          const script = document.createElement('script');
+          script.textContent = `
+            document.addEventListener('contextmenu', e => e.preventDefault(), true);
+            document.addEventListener('selectstart', e => e.preventDefault(), true);
+            document.addEventListener('copy', e => e.preventDefault(), true);
+            document.addEventListener('cut', e => e.preventDefault(), true);
+            document.addEventListener('dragstart', e => e.preventDefault(), true);
+            document.addEventListener('keydown', e => {
+              if ((e.ctrlKey || e.metaKey) && ['c', 'x', 'a', 's', 'p'].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+              }
+            }, true);
+          `;
+          iframe.contentDocument.body?.appendChild(script);
+        }
+      } catch (e) {
+        console.log('Enhanced protection applied to modal.');
       }
-    } catch (e) {
-      // Expected to fail due to CORS, but we try anyway
     }
+  };
+
+// Enhanced Word Protection Overlay - improved scrollbar handling
+  const WordProtectionOverlay = () => {
+    if (!isWord) return null;
+
+    return (
+      <>
+        {/* Invisible interaction blocker that properly excludes scrollbar area */}
+        <div
+          ref={overlayRef}
+          className="absolute word-protection-overlay"
+          style={{
+            top: 0,
+            left: 0,
+            right: 20, // Exclude right edge for vertical scrollbar
+            bottom: 20, // Exclude bottom edge for horizontal scrollbar
+            zIndex: 20,
+            background: 'transparent',
+            // Allow scroll events to pass through, but capture others
+            pointerEvents: isScrolling ? 'none' : 'auto',
+          }}
+          onMouseDown={(e) => {
+            if (!isScrolling && !isInScrollbarArea(e.clientX, e.clientY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              showProtectionWarning("Action Blocked", "Interaction with document content is restricted.");
+            }
+          }}
+          onDoubleClick={(e) => {
+            if (!isInScrollbarArea(e.clientX, e.clientY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              showProtectionWarning("Action Blocked", "Text selection is disabled.");
+            }
+          }}
+          onContextMenu={(e) => {
+            if (!isInScrollbarArea(e.clientX, e.clientY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              showProtectionWarning("Action Blocked", "Right-clicking is disabled.");
+            }
+          }}
+          onDragStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showProtectionWarning("Action Blocked", "Dragging content is disabled.");
+          }}
+          // Allow wheel events for scrolling
+          onWheel={(e) => {
+            handleScrollStart();
+          }}
+        />
+        
+        {/* Very subtle watermark overlay - significantly reduced and excludes scrollbar */}
+        <div
+          className="absolute pointer-events-none select-none"
+          style={{
+            top: 0,
+            left: 0,
+            right: 20, // Exclude scrollbar area
+            bottom: 20, // Exclude scrollbar area
+            background: `
+              repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 300px,
+                rgba(0,0,0,0.003) 300px,
+                rgba(0,0,0,0.003) 600px
+              )
+            `,
+            zIndex: 25
+          }}
+        />
+      </>
+    );
+  };
+
+  // Enhanced PDF Protection Overlay - same interaction blocking as Word documents
+  const PDFProtectionOverlay = () => {
+    if (!isPDF) return null;
+
+    return (
+      <>
+        {/* Invisible interaction blocker that properly excludes scrollbar area */}
+        <div
+          className="absolute pdf-protection-overlay"
+          style={{
+            top: 0,
+            left: 0,
+            right: 20, // Exclude right edge for vertical scrollbar
+            bottom: 20, // Exclude bottom edge for horizontal scrollbar
+            zIndex: 20,
+            background: 'transparent',
+            // Allow scroll events to pass through, but capture others
+            pointerEvents: isScrolling ? 'none' : 'auto',
+          }}
+          onMouseDown={(e) => {
+            if (!isScrolling && !isInScrollbarArea(e.clientX, e.clientY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              showProtectionWarning("Action Blocked", "Interaction with document content is restricted.");
+            }
+          }}
+          onDoubleClick={(e) => {
+            if (!isInScrollbarArea(e.clientX, e.clientY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              showProtectionWarning("Action Blocked", "Text selection is disabled.");
+            }
+          }}
+          onContextMenu={(e) => {
+            if (!isInScrollbarArea(e.clientX, e.clientY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              showProtectionWarning("Action Blocked", "Right-clicking is disabled.");
+            }
+          }}
+          onDragStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showProtectionWarning("Action Blocked", "Dragging content is disabled.");
+          }}
+          // Allow wheel events for scrolling
+          onWheel={(e) => {
+            handleScrollStart();
+          }}
+        />
+        
+        {/* Minimal watermark overlay - excludes scrollbar */}
+        <div
+          className="absolute pointer-events-none select-none"
+          style={{
+            top: 0,
+            left: 0,
+            right: 20, // Exclude scrollbar area
+            bottom: 20, // Exclude scrollbar area
+            background: `repeating-linear-gradient(45deg, transparent, transparent 200px, rgba(0,0,0,0.01) 200px, rgba(0,0,0,0.01) 400px)`,
+            zIndex: 25
+          }}
+        />
+      </>
+    );
   };
 
   if (!isOpen) return null;
 
-  // Determine if the document type is an image
-  const isImage = documentType?.toLowerCase().includes('image') || 
-                  documentUrl?.match(/\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i);
-  
-  // Check if it's a Google Drive URL
-  const isGoogleDrive = documentUrl?.includes('drive.google.com');
-  
-  // Process the URL for viewing
   const getViewableUrl = () => {
+    const isGoogleDrive = documentUrl?.includes('drive.google.com');
     if (isGoogleDrive) {
-      // Extract file ID and use preview mode without toolbar
       const fileIdMatch = documentUrl.match(/[-\w]{25,}/);
       if (fileIdMatch) {
-        // Add parameters to try to hide controls
-        return `https://drive.google.com/file/d/${fileIdMatch[0]}/preview?rm=minimal`;
+        return `https://drive.google.com/file/d/${fileIdMatch[0]}/preview?rm=minimal&embedded=true`;
       }
     }
-    // For PDFs, use Google Docs viewer
-    if (documentUrl?.toLowerCase().endsWith('.pdf') || documentType?.toLowerCase().includes('pdf')) {
-      return `https://docs.google.com/viewer?url=${encodeURIComponent(documentUrl)}&embedded=true&rm=minimal`;
+    const encodedUrl = encodeURIComponent(documentUrl);
+    if (isWord) {
+      // Office Online with enhanced view mode parameters
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}&wdStartOn=1&wdEmbedCode=0`;
+    }
+    if (isPDF) {
+      return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true&rm=minimal`;
     }
     return documentUrl;
   };
 
+  if (!isPDF && !isWord) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+          onClick={onClose}
+        />
+        <div className="relative bg-white rounded-lg p-8 max-w-md">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Unsupported Document Type</h3>
+          <p className="text-gray-600 mb-4">Only PDF and Word documents can be viewed in the secure viewer.</p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Enhanced backdrop with blur and semi-transparency */}
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer"
         onClick={onClose}
-        style={{ 
+        style={{
           backgroundColor: 'rgba(0, 0, 0, 0.85)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)'
         }}
       />
 
-      {/* Modal Content */}
-      <div 
+      {showWarning && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[110] animate-pulse">
+          <div className="bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+            <i className="bi bi-shield-lock-fill text-xl"></i>
+            <div>
+              <p className="font-semibold">{warningMessage.title}</p>
+              <p className="text-sm">{warningMessage.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
         ref={modalRef}
         className={`relative ${isFullscreen ? 'w-full h-full' : 'w-[92vw] h-[92vh] max-w-7xl'} bg-gray-900 shadow-2xl flex flex-col overflow-hidden transition-all duration-300`}
         style={{ borderRadius: isFullscreen ? '0' : '0.75rem' }}
       >
-        
-        {/* Minimalist Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-900/95 to-transparent">
+
+        {/* Header with normal cursor for all controls */}
+        <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-900/95 to-transparent cursor-default">
           <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-800/60 rounded-lg flex items-center justify-center">
+              <i className={`bi ${isWord ? 'bi-file-earmark-word' : 'bi-file-earmark-pdf'} ${isWord ? 'text-blue-400' : 'text-red-400'}`}></i>
+            </div>
             <h3 className="text-white/90 text-sm font-medium truncate max-w-[300px] lg:max-w-[500px]" title={title}>
               {title}
             </h3>
+            <div className="flex items-center gap-1 bg-green-600/20 text-green-400 px-2 py-1 rounded-full">
+              <i className="bi bi-shield-check text-xs"></i>
+              <span className="text-xs font-medium">Secure View</span>
+            </div>
           </div>
 
-          {/* Control buttons */}
           <div className="flex items-center gap-2">
-            {/* Zoom Controls */}
             <div className="flex items-center gap-1 bg-gray-800/80 backdrop-blur-sm rounded-full px-3 py-1.5">
-              <button
-                onClick={handleZoomOut}
-                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all"
-                title="Zoom Out (-))"
+              <button 
+                onClick={handleZoomOut} 
+                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all cursor-pointer" 
+                title="Zoom Out (-)" 
                 disabled={zoomLevel <= 50}
               >
-                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                </svg>
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
               </button>
-              
-              <span className="px-3 text-xs font-medium text-white/80 min-w-[50px] text-center select-none">
-                {zoomLevel}%
-              </span>
-              
-              <button
-                onClick={handleZoomIn}
-                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all"
-                title="Zoom In (+)"
+              <span className="px-3 text-xs font-medium text-white/80 min-w-[50px] text-center select-none">{zoomLevel}%</span>
+              <button 
+                onClick={handleZoomIn} 
+                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all cursor-pointer" 
+                title="Zoom In (+)" 
                 disabled={zoomLevel >= 200}
               >
-                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               </button>
-
               <div className="w-px h-5 bg-gray-600/50 mx-1"></div>
-              
-              <button
-                onClick={handleZoomReset}
-                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all"
+              <button 
+                onClick={handleZoomReset} 
+                className="p-1.5 hover:bg-gray-700/50 rounded-full transition-all cursor-pointer" 
                 title="Reset Zoom (R)"
               >
-                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </button>
             </div>
-
-            {/* Fullscreen Button */}
-            <button
-              onClick={toggleFullscreen}
-              className="p-2.5 bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 rounded-full transition-all"
+            <button 
+              onClick={toggleFullscreen} 
+              className="p-2.5 bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 rounded-full transition-all cursor-pointer" 
               title={isFullscreen ? "Exit Fullscreen (F)" : "Fullscreen (F)"}
             >
               {isFullscreen ? (
-                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                </svg>
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" /></svg>
               ) : (
-                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
               )}
             </button>
-
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="p-2.5 bg-red-600/80 backdrop-blur-sm hover:bg-red-700/80 rounded-full transition-all ml-2"
+            <button 
+              onClick={onClose} 
+              className="p-2.5 bg-red-600/80 backdrop-blur-sm hover:bg-red-700/80 rounded-full transition-all ml-2 cursor-pointer" 
               title="Close (ESC)"
             >
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
         </div>
 
-        {/* Document Viewer Area */}
-        <div 
-          ref={containerRef}
-          className="flex-1 bg-gray-950 relative overflow-hidden document-content"
-          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+        {/* Document container - this is where protection applies */}
+        <div
+          ref={documentContentRef}
+          className="flex-1 bg-gray-950 relative overflow-auto document-content"
+          style={{
+            userSelect: 'none', 
+            WebkitUserSelect: 'none', 
+            MozUserSelect: 'none',
+            msUserSelect: 'none', 
+            WebkitTouchCallout: 'none',
+            cursor: 'default' // Prevent text cursor in document area
+          }}
+          onDragStart={(e) => e.preventDefault()}
+          onDrop={(e) => e.preventDefault()}
         >
-          {/* Loading Indicator */}
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
               <div className="text-center">
                 <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-sm text-gray-400">Loading secure document viewer...</p>
+                <p className="text-xs text-gray-500 mt-2">{isWord ? 'Preparing Word document...' : 'Preparing PDF document...'}</p>
               </div>
             </div>
           )}
 
-          {/* Document Content */}
-          {isImage ? (
-            // Image viewer with protection
-            <div 
-              className="w-full h-full flex items-center justify-center p-8 select-none"
-              style={{
-                transform: `scale(${zoomLevel / 100})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.2s ease-in-out',
-                userSelect: 'none',
-                // @ts-ignore - vendor prefixes
-                WebkitUserSelect: 'none',
-                MozUserSelect: 'none',
-                msUserSelect: 'none'
-              } as React.CSSProperties}
-              onContextMenu={(e) => e.preventDefault()}
-              onDragStart={(e) => e.preventDefault()}
-            >
-              <img
-                src={documentUrl}
-                alt={title}
-                className="max-w-full max-h-full object-contain select-none pointer-events-none"
-                style={{ 
-                  userSelect: 'none',
-                  // @ts-ignore - vendor prefixes for older browsers
-                  WebkitUserSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  WebkitUserDrag: 'none',
-                  pointerEvents: 'none'
-                } as React.CSSProperties}
-                draggable={false}
-                onLoad={() => setIsLoading(false)}
-                onError={() => {
-                  setIsLoading(false);
-                  alert("Failed to load image");
-                }}
-                onContextMenu={(e) => e.preventDefault()}
-                onDragStart={(e) => e.preventDefault()}
-              />
-            </div>
-          ) : (
-            // PDF and document viewer with iframe
-            <div className="w-full h-full relative">
-              <iframe
-                ref={iframeRef}
-                src={getViewableUrl()}
-                className="absolute inset-0 w-full h-full bg-white"
-                style={{
-                  width: `${100 / (zoomLevel / 100)}%`,
-                  height: `${100 / (zoomLevel / 100)}%`,
-                  border: 'none',
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: `translate(-50%, -50%) scale(${zoomLevel / 100})`
-                }}
-                onLoad={handleIframeLoad}
-                onError={() => {
-                  setIsLoading(false);
-                  console.error("Failed to load document");
-                }}
-                title={title}
-                sandbox="allow-same-origin allow-scripts"
-                allowFullScreen={false}
-              />
-              {/* Overlay to prevent interaction with certain areas */}
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{ zIndex: 5 }}
-              />
-            </div>
-          )}
-
-          {/* Watermark overlay (optional) */}
-          <div 
-            className="absolute inset-0 pointer-events-none select-none"
+          {/* Enhanced iframe with better sandbox attributes */}
+          <iframe
+            ref={iframeRef}
+            src={getViewableUrl()}
+            className="w-full h-full bg-white"
             style={{
-              background: 'repeating-linear-gradient(45deg, transparent, transparent 100px, rgba(0,0,0,0.02) 100px, rgba(0,0,0,0.02) 200px)',
-              zIndex: 10
+              width: `${100 / (zoomLevel / 100)}%`, 
+              height: `${100 / (zoomLevel / 100)}%`,
+              border: 'none',
+              transform: `scale(${zoomLevel / 100})`,
+              transformOrigin: 'top left',
             }}
+            onLoad={handleIframeLoad}
+            onError={() => {
+              setIsLoading(false);
+              console.error("Failed to load document");
+            }}
+            title={title}
+            sandbox={isWord ? 
+              "allow-same-origin allow-scripts allow-popups allow-forms" : 
+              "allow-same-origin allow-scripts allow-popups allow-forms"
+            }
+            allowFullScreen={false}
           />
+          
+          {/* Enhanced protection overlay for Word documents */}
+          <WordProtectionOverlay />
+          
+          {/* Minimal overlay for PDFs - removed prominent watermark */}
+          {isPDF && (
+            <div
+              className="absolute pointer-events-none select-none"
+              style={{
+                top: 0,
+                left: 0,
+                right: 20, // Exclude scrollbar area
+                bottom: 20, // Exclude scrollbar area
+                background: `repeating-linear-gradient(45deg, transparent, transparent 200px, rgba(0,0,0,0.01) 200px, rgba(0,0,0,0.01) 400px)`,
+                zIndex: 10
+              }}
+            />
+          )}
         </div>
 
-        {/* Keyboard shortcuts hint */}
-        <div className="absolute bottom-4 left-4 text-xs text-gray-500 select-none">
-          <span className="bg-gray-800/70 backdrop-blur-sm px-2 py-1 rounded">
-            ESC to close • F for fullscreen • +/- for zoom
-          </span>
+        {/* Footer with normal cursor */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-6 py-3 bg-gradient-to-t from-gray-900/95 to-transparent cursor-default z-30">
+          <div className="text-xs text-gray-500 select-none">
+            <span className="bg-gray-800/70 backdrop-blur-sm px-2 py-1 rounded">
+              ESC to close • F for fullscreen • +/- for zoom
+              {isWord && " • Scroll to navigate document"}
+            </span>
+          </div>
+          {copyAttempts > 0 && (
+            <div className="text-xs text-red-400 select-none">
+              <span className="bg-red-900/30 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
+                <i className="bi bi-exclamation-triangle"></i>
+                Protection triggered: {copyAttempts} time(s)
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Additional CSS for security */}
+      {/* Enhanced CSS styles - improved scrollbar functionality */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .document-content * {
+        /* Allow normal cursor and interactions for UI controls */
+        .fixed.inset-0.z-\\[100\\] button {
+          cursor: pointer !important;
+        }
+        
+        .fixed.inset-0.z-\\[100\\] .cursor-pointer {
+          cursor: pointer !important;
+        }
+        
+        /* Enhanced protection only for document content area */
+        .document-content iframe, .document-content iframe * {
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: none !important;
+          -khtml-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
+          -webkit-user-drag: none !important;
+          -khtml-user-drag: none !important;
+          -moz-user-drag: none !important;
+          -o-user-drag: none !important;
+          user-drag: none !important;
+        }
+        
+        /* Enable scrollbar functionality with enhanced styling */
+        .document-content {
+          overflow: auto !important;
+          scrollbar-width: auto !important;
+          scrollbar-color: rgba(255, 255, 255, 0.4) rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        /* Enhanced scrollbar styling for better visibility and functionality */
+        .document-content::-webkit-scrollbar {
+          width: 16px !important;
+          height: 16px !important;
+          cursor: pointer !important;
+        }
+        
+        .document-content::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.2) !important;
+          cursor: pointer !important;
+          border-radius: 0 !important;
+        }
+        
+        .document-content::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.4) !important;
+          border-radius: 8px !important;
+          cursor: pointer !important;
+          border: 2px solid transparent !important;
+          background-clip: content-box !important;
+        }
+        
+        .document-content::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.6) !important;
+          cursor: pointer !important;
+        }
+        
+        .document-content::-webkit-scrollbar-thumb:active {
+          background: rgba(255, 255, 255, 0.8) !important;
+          cursor: grabbing !important;
+        }
+        
+        .document-content::-webkit-scrollbar-corner {
+          background: rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        /* Disable text selection highlighting only in document content */
+        .document-content iframe::selection, .document-content iframe *::selection { 
+          background: transparent !important; 
+        }
+        .document-content iframe::-moz-selection, .document-content iframe *::-moz-selection { 
+          background: transparent !important; 
+        }
+        
+        /* Protection overlay styles */
+        .word-protection-overlay {
           -webkit-touch-callout: none !important;
           -webkit-user-select: none !important;
           -khtml-user-select: none !important;
@@ -445,18 +948,71 @@ const DocumentViewerModal: React.FC<{
           user-select: none !important;
         }
         
-        .document-content img {
-          pointer-events: none !important;
-          -webkit-user-drag: none !important;
-          -khtml-user-drag: none !important;
-          -moz-user-drag: none !important;
-          -o-user-drag: none !important;
-          user-drag: none !important;
+        /* Disable highlighting on overlay */
+        .word-protection-overlay::selection { 
+          background: transparent !important; 
+        }
+        .word-protection-overlay::-moz-selection { 
+          background: transparent !important; 
         }
         
-        iframe {
-          -webkit-touch-callout: none !important;
-          -webkit-user-select: none !important;
+        /* Disable printing */
+        @media print {
+          .document-content, .document-content * { 
+            display: none !important; 
+            visibility: hidden !important; 
+          }
+        }
+        
+        /* Prevent iframe content leaking through */
+        .document-content iframe {
+          isolation: isolate;
+        }
+        
+        /* Ensure UI elements maintain normal cursor */
+        .bg-gray-800\\/80, .bg-red-600\\/80, .hover\\:bg-gray-700\\/80, .hover\\:bg-red-700\\/80 {
+          cursor: pointer !important;
+        }
+        
+        /* Make sure header and footer areas have normal cursor */
+        .absolute.top-0, .absolute.bottom-0 {
+          cursor: default !important;
+        }
+        
+        .absolute.top-0 *, .absolute.bottom-0 * {
+          cursor: inherit !important;
+        }
+        
+        .absolute.top-0 button, .absolute.bottom-0 button {
+          cursor: pointer !important;
+        }
+        
+        /* Ensure the document content allows scrolling cursor when hovering over scroll areas */
+        .document-content:hover {
+          cursor: default !important;
+        }
+        
+        /* Force scrollbar to be always visible and functional */
+        .document-content {
+          scrollbar-gutter: stable both-edges !important;
+        }
+        
+        /* Additional scrollbar interaction improvements */
+        .document-content::-webkit-scrollbar-button {
+          display: block !important;
+          height: 16px !important;
+          width: 16px !important;
+          cursor: pointer !important;
+        }
+        
+        .document-content::-webkit-scrollbar-button:hover {
+          background: rgba(255, 255, 255, 0.2) !important;
+        }
+        
+        /* Ensure proper z-index for scrollbars */
+        .document-content::-webkit-scrollbar {
+          z-index: 1000 !important;
+          position: relative !important;
         }
       `}} />
     </div>
@@ -464,9 +1020,9 @@ const DocumentViewerModal: React.FC<{
 };
 
 // Comment Modal Component
-const CommentModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
+const CommentModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
   research: Research;
   researchId: string;
 }> = ({ isOpen, onClose, research, researchId }) => {
@@ -478,7 +1034,7 @@ const CommentModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!comment.trim()) {
       setError("Please enter a comment");
       return;
@@ -513,10 +1069,10 @@ const CommentModal: React.FC<{
         className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-lg hover:shadow-xl transition-all duration-200 group z-10"
         aria-label="Close modal"
       >
-        <svg 
-          className="w-4 h-4 text-gray-600 group-hover:text-teal-600 transition-colors" 
-          fill="none" 
-          stroke="currentColor" 
+        <svg
+          className="w-4 h-4 text-gray-600 group-hover:text-teal-600 transition-colors"
+          fill="none"
+          stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -619,9 +1175,9 @@ const CommentModal: React.FC<{
 };
 
 // Report Issue Modal Component
-const ReportIssueModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
+const ReportIssueModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
   research: Research;
   researchId: string;
 }> = ({ isOpen, onClose, research, researchId }) => {
@@ -643,7 +1199,7 @@ const ReportIssueModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!issueType || !description.trim()) {
       setError("Please select an issue type and provide a description");
       return;
@@ -679,10 +1235,10 @@ const ReportIssueModal: React.FC<{
         className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-lg hover:shadow-xl transition-all duration-200 group z-10"
         aria-label="Close modal"
       >
-        <svg 
-          className="w-4 h-4 text-gray-600 group-hover:text-teal-600 transition-colors" 
-          fill="none" 
-          stroke="currentColor" 
+        <svg
+          className="w-4 h-4 text-gray-600 group-hover:text-teal-600 transition-colors"
+          fill="none"
+          stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -797,13 +1353,13 @@ const ReportIssueModal: React.FC<{
 };
 
 // Share Button Component (Updated)
-const ShareButton: React.FC<{ 
-  research: Research; 
-  researchId: string; 
+const ShareButton: React.FC<{
+  research: Research;
+  researchId: string;
   variant?: 'header' | 'quick-action';
   onOpenModal?: () => void;
-}> = ({ 
-  research, 
+}> = ({
+  research,
   researchId,
   variant = 'header',
   onOpenModal
@@ -851,7 +1407,7 @@ const ShareButton: React.FC<{
     if (shareLink) {
       window.open(shareLink, '_blank', 'noopener,noreferrer');
     }
-    
+
     setShowShareMenu(false);
   };
 
@@ -921,9 +1477,9 @@ const ShareButton: React.FC<{
 };
 
 // Share Modal Component
-const ShareModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
+const ShareModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
   research: Research;
   researchId: string;
 }> = ({ isOpen, onClose, research, researchId }) => {
@@ -987,10 +1543,10 @@ const ShareModal: React.FC<{
         className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-lg hover:shadow-xl transition-all duration-200 group z-10"
         aria-label="Close modal"
       >
-        <svg 
-          className="w-4 h-4 text-gray-600 group-hover:text-teal-600 transition-colors" 
-          fill="none" 
-          stroke="currentColor" 
+        <svg
+          className="w-4 h-4 text-gray-600 group-hover:text-teal-600 transition-colors"
+          fill="none"
+          stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1050,8 +1606,8 @@ const ShareModal: React.FC<{
               <button
                 onClick={copyToClipboard}
                 className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                  copied 
-                    ? 'bg-green-600 text-white' 
+                  copied
+                    ? 'bg-green-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -1081,7 +1637,7 @@ export default function ResearchViewPage() {
   const [research, setResearch] = useState<Research | null>(null);
   const [id, setId] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  
+
   // Modal states
   const [showShareModal, setShowShareModal] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -1106,7 +1662,7 @@ export default function ResearchViewPage() {
       const fetchResearch = async () => {
         setLoading(true);
         setError(null);
-        
+
         try {
           const response = await fetch(`/api/researches/view`, {
             method: "POST",
@@ -1179,9 +1735,9 @@ export default function ResearchViewPage() {
       <head>
         <title>{getPageTitle()}</title>
       </head>
-      
+
       <TopBar onClickSideBar={showSideBar} />
-      
+
       <div className="min-h-screen bg-gray-50 mt-[80px]" onClick={closeSideBar}>
         {error ? (
           <div className="flex items-center justify-center min-h-[60vh] px-4">
@@ -1189,8 +1745,8 @@ export default function ResearchViewPage() {
               <i className="bi bi-exclamation-triangle text-4xl sm:text-5xl text-red-500 mb-4"></i>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Research Not Found</h2>
               <p className="text-sm sm:text-base text-gray-600 mb-6">The research document you're looking for doesn't exist or has been removed.</p>
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm"
               >
                 <i className="bi bi-arrow-left mr-2"></i>
@@ -1236,7 +1792,7 @@ export default function ResearchViewPage() {
                   </span>
                 </div>
               </div>
-              
+
               {/* Action Buttons */}
               <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 flex items-center gap-2 sm:gap-3">
                 <button disabled className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm">
@@ -1257,39 +1813,69 @@ export default function ResearchViewPage() {
                       <i className="bi bi-file-text mr-2 text-teal-600 flex-shrink-0"></i>
                       Abstract
                     </h2>
-                    <div 
-                      id="abstract" 
+                    <div
+                      id="abstract"
                       className="prose prose-gray max-w-none text-gray-700 leading-relaxed text-sm sm:text-base"
                     ></div>
                   </div>
                 </div>
 
-                {/* Document Access - Modified */}
-                {research.document && research.is_public &&(
+                {/* Updated Document Access Section */}
+                {research.document && research.is_public && (
                   <div className="bg-white rounded-lg shadow-sm border">
                     <div className="p-4 sm:p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <i className="bi bi-file-earmark-pdf mr-2 text-red-600 flex-shrink-0"></i>
-                        Full Document
-                      </h2>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <i className="bi bi-file-earmark-pdf text-red-600 text-lg sm:text-xl"></i>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 text-sm sm:text-base break-words">Research Document</p>
-                            <p className="text-xs sm:text-sm text-gray-600">{research.document_type || "PDF"}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setShowDocumentViewerModal(true)}
-                          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex-shrink-0"
-                        >
-                          <i className="bi bi-eye"></i>
-                          View Document
-                        </button>
-                      </div>
+                      {(() => {
+                        const docInfo = getDocumentIconInfo(research.document, research.document_type);
+                        return (
+                          <>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                              <i className={`${docInfo.icon} mr-2 ${docInfo.color} flex-shrink-0`}></i>
+                              Full Document
+                            </h2>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${docInfo.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                  <i className={`${docInfo.icon} ${docInfo.color} text-lg sm:text-xl`}></i>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 text-sm sm:text-base break-words">
+                                    Research Document
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-600">
+                                    {docInfo.label}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Only show view button for PDF and Word documents */}
+                              {getDocumentType(research.document, research.document_type) !== 'unknown' ? (
+                                <button
+                                  onClick={() => setShowDocumentViewerModal(true)}
+                                  className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex-shrink-0"
+                                >
+                                  <i className="bi bi-eye"></i>
+                                  View Document
+                                </button>
+                              ) : (
+                                <div className="text-sm text-gray-500 italic">
+                                  Document type not supported for viewing
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Security notice */}
+                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <i className="bi bi-shield-lock text-amber-600 mt-0.5"></i>
+                                <div className="text-xs text-amber-700">
+                                  <p className="font-medium mb-1">Document Protection Active</p>
+                                  <p>This document is protected. Copying, downloading, and printing are disabled to maintain document security.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -1306,43 +1892,43 @@ export default function ResearchViewPage() {
                     </h2>
                     <div className="space-y-4">
                       {[
-                        { 
-                          label: "Status", 
+                        {
+                          label: "Status",
                           value: research.progress_status,
                           icon: "bi-flag"
                         },
-                        { 
-                          label: "Researcher", 
+                        {
+                          label: "Researcher",
                           value: research.researcher,
                           icon: "bi-person"
                         },
-                        { 
-                          label: "Institution", 
+                        {
+                          label: "Institution",
                           value: research.institute,
                           icon: "bi-building"
                         },
-                        { 
-                          label: "School/Department", 
+                        {
+                          label: "School/Department",
                           value: research.school,
                           icon: "bi-mortarboard"
                         },
-                        { 
-                          label: "Category", 
+                        {
+                          label: "Category",
                           value: research.category,
                           icon: "bi-tag"
                         },
-                        { 
-                          label: "Year", 
+                        {
+                          label: "Year",
                           value: research.year,
                           icon: "bi-calendar"
                         },
-                        { 
-                          label: "Document Type", 
+                        {
+                          label: "Document Type",
                           value: research.document_type,
                           icon: "bi-file-earmark"
                         },
-                        { 
-                          label: "Published", 
+                        {
+                          label: "Published",
                           value: research.created_at ? formatDate(research.created_at) : "",
                           icon: "bi-clock"
                         },
@@ -1370,20 +1956,20 @@ export default function ResearchViewPage() {
                   <div className="p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                     <div className="space-y-1">
-                      <ShareButton 
-                        research={research} 
-                        researchId={id} 
+                      <ShareButton
+                        research={research}
+                        researchId={id}
                         variant="quick-action"
                         onOpenModal={() => setShowShareModal(true)}
                       />
-                      <button 
+                      <button
                         onClick={() => setShowCommentModal(true)}
                         className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
                       >
                         <i className="bi bi-chat text-blue-500 flex-shrink-0"></i>
                         <span className="text-sm text-gray-700">Add comment</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => setShowReportModal(true)}
                         className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
                       >
@@ -1400,30 +1986,30 @@ export default function ResearchViewPage() {
       </div>
 
       {isOpen && <SideBar />}
-      
+
       {/* Modals */}
       {research && (
         <>
-          <DocumentViewerModal 
+          <DocumentViewerModal
             isOpen={showDocumentViewerModal}
             onClose={() => setShowDocumentViewerModal(false)}
             documentUrl={research.document}
             documentType={research.document_type}
             title={research.title}
           />
-          <ShareModal 
+          <ShareModal
             isOpen={showShareModal}
             onClose={() => setShowShareModal(false)}
             research={research}
             researchId={id}
           />
-          <CommentModal 
+          <CommentModal
             isOpen={showCommentModal}
             onClose={() => setShowCommentModal(false)}
             research={research}
             researchId={id}
           />
-          <ReportIssueModal 
+          <ReportIssueModal
             isOpen={showReportModal}
             onClose={() => setShowReportModal(false)}
             research={research}
@@ -1431,7 +2017,7 @@ export default function ResearchViewPage() {
           />
         </>
       )}
-      
+
       <Footer />
     </>
   );
